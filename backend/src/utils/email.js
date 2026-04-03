@@ -1,0 +1,107 @@
+import nodemailer from "nodemailer";
+
+const createTransporter = async () => {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  await transporter.verify();
+  return transporter;
+};
+
+
+export const sendOtpEmail = async (to, otp) => {
+  const transporter = await createTransporter();
+
+  await transporter.sendMail({
+    from: `"EduNexus" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Verify your EduNexus account",
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Email Verification</h2>
+        <p>Your OTP for EduNexus email verification is:</p>
+        <h1 style="letter-spacing: 8px; color: #6366f1;">${otp}</h1>
+        <p>This OTP will expire in <strong>10 minutes</strong>.</p>
+        <p style="color: #888; font-size: 12px;">
+          If you didn't request this, please ignore this email.
+        </p>
+      </div>
+    `,
+  });
+};
+
+
+export const sendResetPasswordEmail = async (to, resetLink) => {
+  const transporter = await createTransporter();
+
+  await transporter.sendMail({
+    from: `"EduNexus" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Reset your EduNexus password",
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Password Reset Request</h2>
+        <p>Click the link below to reset your password:</p>
+        <a href="${resetLink}"
+           style="padding: 10px 18px; background-color: #6366f1; color: #fff;
+                  text-decoration: none; border-radius: 5px; display: inline-block;">
+          Reset Password
+        </a>
+        <p>This link will expire in <strong>15 minutes</strong>.</p>
+        <p style="color: #888; font-size: 12px;">
+          If you didn't request this, please ignore this email.
+        </p>
+      </div>
+    `,
+  });
+};
+
+
+export const sendEnrollmentEmail = async (to, { studentName, courseName }) => {
+  const transporter = await createTransporter();
+
+  await transporter.sendMail({
+    from: `"EduNexus" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: `You're enrolled in ${courseName}!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Enrollment Confirmed!</h2>
+        <p>Hi <strong>${studentName}</strong>,</p>
+        <p>You have successfully enrolled in <strong>${courseName}</strong>.</p>
+        <p>Start learning now on EduNexus!</p>
+        <p style="color: #888; font-size: 12px;">
+          Happy Learning!<br/>Team EduNexus
+        </p>
+      </div>
+    `,
+  });
+};
+
+
+export const sendPaymentSuccessEmail = async (to, { studentName, courseName, amount }) => {
+  const transporter = await createTransporter();
+
+  await transporter.sendMail({
+    from: `"EduNexus" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Payment Successful — EduNexus",
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Payment Successful!</h2>
+        <p>Hi <strong>${studentName}</strong>,</p>
+        <p>Your payment of <strong>₹${amount}</strong> for 
+           <strong>${courseName}</strong> was successful.</p>
+        <p>You now have full access to the course.</p>
+        <p style="color: #888; font-size: 12px;">
+          Thank you for learning with EduNexus!
+        </p>
+      </div>
+    `,
+  });
+};
