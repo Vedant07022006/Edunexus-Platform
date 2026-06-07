@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Root package files
+package.json
+package-lock.json
+
+# Zip files
+*.zip
+
+# Documents / notes
+Readme.md
+changes_updation.md
+ednexus_overview_controller.txt
+feature.txt
