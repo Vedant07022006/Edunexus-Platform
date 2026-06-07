@@ -38,7 +38,7 @@ const pendingUserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🔥 Auto delete after expiry
+
 pendingUserSchema.index({ otpExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const PendingUser = mongoose.model("PendingUser", pendingUserSchema);

@@ -4,11 +4,15 @@ import {
   verifyPayment,
   getPaymentHistory,
   getCoursePayments,
+  razorpayWebhook,
 } from "../controllers/payment.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
 import { isInstructor, isStudent } from "../middlewares/role.middleware.js";
 
 const router = Router();
+
+// WEBHOOK
+router.post("/webhook", razorpayWebhook);
 
 
 // STUDENT ROUTES

@@ -12,30 +12,30 @@ import {
   getCoursesByCategory,
 } from "../controllers/course.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
+import optionalAuth from "../middlewares/optionalAuth.middleware.js";
 import { isInstructor } from "../middlewares/role.middleware.js";
 import { uploadThumbnail } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-
-// PUBLIC ROUTES — no login needed
-
+// ── PUBLIC ROUTES — no auth needed ─────────────────────────────────────────
 router.get("/", getAllCourses);
 router.get("/search", searchCourses);
 router.get("/category/:category", getCoursesByCategory);
 
-
-// PROTECTED ROUTES — Instructor only
+// ── INSTRUCTOR ROUTES — static paths MUST come before /:courseId ──────────
+// /my/courses must be before /:courseId or Express treats "my" as a courseId
+router.get("/my/courses", verifyJWT, isInstructor, getMyCourses);
 
 router.post("/", verifyJWT, isInstructor, uploadThumbnail, createCourse);
 router.patch("/:courseId/publish", verifyJWT, isInstructor, publishCourse);
+router.patch("/:courseId/restore", verifyJWT, isInstructor, restoreCourse);
 router.patch("/:courseId", verifyJWT, isInstructor, uploadThumbnail, updateCourse);
 router.delete("/:courseId", verifyJWT, isInstructor, deleteCourse);
-router.patch("/:courseId/restore", verifyJWT, isInstructor, restoreCourse);
-// ⚠️ /my/courses MUST be above /:courseId to avoid Express treating "my" as an ID
-router.get("/my/courses", verifyJWT, isInstructor, getMyCourses);
 
+// ── DYNAMIC ROUTE — optionalAuth lets instructors view their unpublished courses ──
+// Without optionalAuth, req.user is always null → isInstructor = false → 404 on
+// every unpublished course, breaking ManageCoursePage completely.
+router.get("/:courseId", optionalAuth, getCourseById);
 
-router.get("/:courseId", getCourseById);
-
-export default router;
+export default router;

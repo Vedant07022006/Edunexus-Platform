@@ -1,21 +1,29 @@
 import nodemailer from "nodemailer";
 
-const createTransporter = async () => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+let transporterInstance = null;
 
-  await transporter.verify();
-  return transporter;
+const getTransporter = async () => {
+  if (!transporterInstance) {
+    transporterInstance = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    try {
+      await transporterInstance.verify();
+    } catch (err) {
+      transporterInstance = null;
+      throw err;
+    }
+  }
+  return transporterInstance;
 };
 
 
 export const sendOtpEmail = async (to, otp) => {
-  const transporter = await createTransporter();
+  const transporter = await getTransporter();
 
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
@@ -37,7 +45,7 @@ export const sendOtpEmail = async (to, otp) => {
 
 
 export const sendResetPasswordEmail = async (to, resetLink) => {
-  const transporter = await createTransporter();
+  const transporter = await getTransporter();
 
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
@@ -63,7 +71,7 @@ export const sendResetPasswordEmail = async (to, resetLink) => {
 
 
 export const sendEnrollmentEmail = async (to, { studentName, courseName }) => {
-  const transporter = await createTransporter();
+  const transporter = await getTransporter();
 
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
@@ -85,7 +93,7 @@ export const sendEnrollmentEmail = async (to, { studentName, courseName }) => {
 
 
 export const sendPaymentSuccessEmail = async (to, { studentName, courseName, amount }) => {
-  const transporter = await createTransporter();
+  const transporter = await getTransporter();
 
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,

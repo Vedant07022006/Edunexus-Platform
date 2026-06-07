@@ -75,7 +75,7 @@ const courseSchema = new Schema(
     },
 
     totalDuration: {
-      type: Number, // in seconds
+      type: Number, 
       default: 0,
     },
 
@@ -96,7 +96,7 @@ const courseSchema = new Schema(
 
     isArchived: {
       type: Boolean,
-      default: false, // Soft delete
+      default: false, 
     },
   },
   { timestamps: true }
@@ -106,6 +106,7 @@ const courseSchema = new Schema(
 courseSchema.index({ instructor: 1 });
 courseSchema.index({ category: 1 });
 courseSchema.index({ isPublished: 1 });
+courseSchema.index({ isArchived: 1 });
 courseSchema.index({ tags: 1 });
 
 

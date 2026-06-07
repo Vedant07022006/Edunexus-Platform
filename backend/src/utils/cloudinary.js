@@ -2,12 +2,16 @@ import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 
 
-const getCloudinaryConfig = () => {
+let isConfigured = false;
+
+const configureCloudinary = () => {
+  if (isConfigured) return;
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key:    process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+  isConfigured = true;
 };
 
 
@@ -16,22 +20,22 @@ export const uploadThumbnailOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
 
-    getCloudinaryConfig();
+    configureCloudinary();
 
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "image",
       folder: "edunexus/thumbnails",
       transformation: [
-        { width: 1280, height: 720, crop: "fill", gravity: "auto" }, // 16:9 ratio
+        { width: 1280, height: 720, crop: "fill", gravity: "auto" }, 
         { quality: "auto:good" },
-        { fetch_format: "auto" }, // Auto WebP/AVIF for modern browsers
+        { fetch_format: "auto" }, 
       ],
     });
 
     fs.unlinkSync(localFilePath);
     return response;
   } catch (error) {
-    console.error("❌ Cloudinary thumbnail upload failed:", error.message);
+    console.error(" Cloudinary thumbnail upload failed:", error.message);
     if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
     return null;
   }
@@ -42,7 +46,7 @@ export const uploadVideoOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
 
-    getCloudinaryConfig();
+    configureCloudinary();
 
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "video",
@@ -67,10 +71,10 @@ export const uploadResourceOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
 
-    getCloudinaryConfig();
+    configureCloudinary();
 
     const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "raw", // For PDFs, docs, zip etc.
+      resource_type: "raw", 
       folder: "edunexus/resources",
     });
 
@@ -88,10 +92,10 @@ export const deleteFromCloudinary = async (publicId, resourceType = "image") => 
   try {
     if (!publicId) return null;
 
-    getCloudinaryConfig();
+    configureCloudinary();
 
     const response = await cloudinary.uploader.destroy(publicId, {
-      resource_type: resourceType, // "image" | "video" | "raw"
+      resource_type: resourceType, 
     });
     return response;
   } catch (error) {
@@ -102,7 +106,7 @@ export const deleteFromCloudinary = async (publicId, resourceType = "image") => 
 
 export const getPublicIdFromUrl = (url) => {
   if (!url) return null;
-  // Handles: https://res.cloudinary.com/<cloud>/image/upload/v123/edunexus/videos/abc.mp4
+  
   const matches = url.match(/\/upload\/(?:v\d+\/)?(.+?)(\.[^.]+)?$/);
   return matches ? matches[1] : null;
 };
@@ -111,7 +115,7 @@ export const getPublicIdFromUrl = (url) => {
 export const getVideoThumbnailUrl = (videoPublicId, timeOffset = "auto") => {
   if (!videoPublicId) return null;
 
-  getCloudinaryConfig();
+  configureCloudinary();
 
   return cloudinary.url(videoPublicId, {
     resource_type: "video",

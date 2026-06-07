@@ -41,7 +41,7 @@ const enrollmentSchema = new Schema(
     lastWatchedLecture: {
       type: Schema.Types.ObjectId,
       ref: "Lecture",
-      default: null, // Resume from here
+      default: null, 
     },
   },
   { timestamps: true }

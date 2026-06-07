@@ -5,46 +5,66 @@
 // import { Lecture } from "../models/lecture.model.js";
 // import { AssemblyAI } from "assemblyai";
 
-
 // const getAssemblyAIClient = () => {
 //   return new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
 // };
 
 
-// // GENERATE TRANSCRIPT — Instructor only
 
 // export const generateTranscript = asyncHandler(async (req, res) => {
+//   if (!req.user) throw new ApiError(401, "Login required");
+
+//   if (req.user.role !== "instructor") {
+//     throw new ApiError(403, "Only instructors allowed");
+//   }
+
 //   const { lectureId } = req.params;
 
 //   const lecture = await Lecture.findById(lectureId).populate("course");
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
+//   if (!lecture.course.instructor) throw new ApiError(404, "This course is no longer available");
 
 //   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-//     throw new ApiError(403, "You are not authorized to generate transcript for this lecture");
+//     throw new ApiError(403, "Not authorized");
 //   }
 
 //   if (!lecture.video.url) {
-//     throw new ApiError(400, "Lecture video not found. Please upload video first.");
+//     throw new ApiError(400, "Lecture video not found");
 //   }
 
 //   const existingTranscript = await Transcript.findOne({ lecture: lectureId });
 //   if (existingTranscript && existingTranscript.status === "completed") {
-//     return res.status(200).json(new ApiResponse(200, existingTranscript, "Transcript already exists"));
+//     return res
+//       .status(200)
+//       .json(new ApiResponse(200, existingTranscript, "Transcript already exists"));
 //   }
 
-//   await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "transcribing" });
+//   await Lecture.findByIdAndUpdate(lectureId, {
+//     processingStatus: "transcribing",
+//   });
 
 //   let transcript = await Transcript.findOneAndUpdate(
 //     { lecture: lectureId },
 //     { lecture: lectureId, status: "processing", transcriptText: "" },
-//     { upsert: true, returnDocument: "after" }
+//     { upsert: true, new: true }
 //   );
 
 //   const client = getAssemblyAIClient();
-//   const result = await client.transcripts.transcribe({
-//     audio: lecture.video.url,
-//     speech_models: ["universal-2"],
-//   });
+
+//   let result;
+//   try {
+//     result = await client.transcripts.transcribe({
+//       audio: lecture.video.url,
+//       speech_models: ["universal-2"],
+//     });
+//   } catch (aaiErr) {
+//     await Transcript.findByIdAndUpdate(transcript._id, { status: "failed" });
+//     await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "failed" });
+//     throw new ApiError(
+//       500,
+//       `AssemblyAI error: ${aaiErr?.message || JSON.stringify(aaiErr)}`
+//     );
+//   }
 
 //   if (result.status === "error") {
 //     await Transcript.findByIdAndUpdate(transcript._id, { status: "failed" });
@@ -69,51 +89,78 @@
 //           }))
 //         : [],
 //     },
-//     { returnDocument: "after" }
+//     { new: true }
 //   );
 
-//   await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "generating_quiz" });
+//   await Lecture.findByIdAndUpdate(lectureId, {
+//     processingStatus: "generating_quiz",
+//   });
 
-//   return res.status(201).json(new ApiResponse(201, transcript, "Transcript generated successfully"));
+//   return res
+//     .status(201)
+//     .json(new ApiResponse(201, transcript, "Transcript generated"));
 // });
 
 
-// // GET TRANSCRIPT — Instructor only
 
 // export const getTranscript = asyncHandler(async (req, res) => {
+//   if (!req.user) throw new ApiError(401, "Login required");
+
+//   if (req.user.role !== "instructor") {
+//     throw new ApiError(403, "Only instructors allowed");
+//   }
+
 //   const { lectureId } = req.params;
 
 //   const lecture = await Lecture.findById(lectureId).populate("course");
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
+//   if (!lecture.course.instructor) throw new ApiError(404, "This course is no longer available");
 
 //   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-//     throw new ApiError(403, "You are not authorized to view this transcript");
+//     throw new ApiError(403, "Not authorized");
 //   }
 
 //   const transcript = await Transcript.findOne({ lecture: lectureId });
-//   if (!transcript) throw new ApiError(404, "Transcript not found. Please generate transcript first.");
+//   if (!transcript) {
+//     throw new ApiError(404, "Transcript not found");
+//   }
 
-//   return res.status(200).json(new ApiResponse(200, transcript, "Transcript fetched successfully"));
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, transcript, "Transcript fetched"));
 // });
 
 
-// // DELETE TRANSCRIPT — Instructor only
 
 // export const deleteTranscript = asyncHandler(async (req, res) => {
+//   if (!req.user) throw new ApiError(401, "Login required");
+
+//   if (req.user.role !== "instructor") {
+//     throw new ApiError(403, "Only instructors allowed");
+//   }
+
 //   const { lectureId } = req.params;
 
 //   const lecture = await Lecture.findById(lectureId).populate("course");
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
+//   if (!lecture.course.instructor) throw new ApiError(404, "This course is no longer available");
 
 //   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-//     throw new ApiError(403, "You are not authorized to delete this transcript");
+//     throw new ApiError(403, "Not authorized");
 //   }
 
 //   await Transcript.findOneAndDelete({ lecture: lectureId });
-//   await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "pending" });
 
-//   return res.status(200).json(new ApiResponse(200, null, "Transcript deleted successfully"));
+//   await Lecture.findByIdAndUpdate(lectureId, {
+//     processingStatus: "pending",
+//   });
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, null, "Transcript deleted"));
 // });
+
+
 
 
 
@@ -128,43 +175,44 @@ import { Transcript } from "../models/transcript.model.js";
 import { Lecture } from "../models/lecture.model.js";
 import { AssemblyAI } from "assemblyai";
 
-const getAssemblyAIClient = () => {
-  return new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
-};
+// ─── Shared helpers ────────────────────────────────────────────────────────────
 
+const getAssemblyAIClient = () => new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
 
-// ================= GENERATE TRANSCRIPT =================
-export const generateTranscript = asyncHandler(async (req, res) => {
-  if (!req.user) throw new ApiError(401, "Login required");
-
-  if (req.user.role !== "instructor") {
-    throw new ApiError(403, "Only instructors allowed");
-  }
-
-  const { lectureId } = req.params;
-
+/**
+ * Fetches a lecture with its course, verifies the requesting user owns it.
+ * Throws on any failure.
+ */
+const getOwnedLecture = async (lectureId, instructorId) => {
   const lecture = await Lecture.findById(lectureId).populate("course");
   if (!lecture) throw new ApiError(404, "Lecture not found");
-
-  if (lecture.course.instructor.toString() !== req.user._id.toString()) {
+  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
+  if (lecture.course.instructor.toString() !== instructorId.toString()) {
     throw new ApiError(403, "Not authorized");
   }
+  return lecture;
+};
 
-  if (!lecture.video.url) {
-    throw new ApiError(400, "Lecture video not found");
-  }
+// ─── Controllers ───────────────────────────────────────────────────────────────
+
+export const generateTranscript = asyncHandler(async (req, res) => {
+  const { lectureId } = req.params;
+
+  const lecture = await getOwnedLecture(lectureId, req.user._id);
+
+  if (!lecture.video?.url) throw new ApiError(400, "Lecture video not found");
 
   const existingTranscript = await Transcript.findOne({ lecture: lectureId });
-  if (existingTranscript && existingTranscript.status === "completed") {
+  if (existingTranscript?.status === "completed") {
     return res
       .status(200)
       .json(new ApiResponse(200, existingTranscript, "Transcript already exists"));
   }
 
-  await Lecture.findByIdAndUpdate(lectureId, {
-    processingStatus: "transcribing",
-  });
+  // Mark lecture as transcribing
+  await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "transcribing" });
 
+  // Upsert a "processing" placeholder so the UI can poll
   let transcript = await Transcript.findOneAndUpdate(
     { lecture: lectureId },
     { lecture: lectureId, status: "processing", transcriptText: "" },
@@ -173,14 +221,25 @@ export const generateTranscript = asyncHandler(async (req, res) => {
 
   const client = getAssemblyAIClient();
 
-  const result = await client.transcripts.transcribe({
-    audio: lecture.video.url,
-    speech_models: ["universal-2"],
-  });
+  let result;
+  try {
+    result = await client.transcripts.transcribe({
+      audio: lecture.video.url,
+      speech_models: ["universal-2"],
+    });
+  } catch (aaiErr) {
+    await Promise.all([
+      Transcript.findByIdAndUpdate(transcript._id, { status: "failed" }),
+      Lecture.findByIdAndUpdate(lectureId, { processingStatus: "failed" }),
+    ]);
+    throw new ApiError(500, `AssemblyAI error: ${aaiErr?.message || JSON.stringify(aaiErr)}`);
+  }
 
   if (result.status === "error") {
-    await Transcript.findByIdAndUpdate(transcript._id, { status: "failed" });
-    await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "failed" });
+    await Promise.all([
+      Transcript.findByIdAndUpdate(transcript._id, { status: "failed" }),
+      Lecture.findByIdAndUpdate(lectureId, { processingStatus: "failed" }),
+    ]);
     throw new ApiError(500, `Transcription failed: ${result.error}`);
   }
 
@@ -193,80 +252,40 @@ export const generateTranscript = asyncHandler(async (req, res) => {
       confidence: result.confidence || 0,
       language: result.language_code || "en",
       timestamps: result.words
-        ? result.words.map((word) => ({
-            text: word.text,
-            start: word.start,
-            end: word.end,
-            confidence: word.confidence,
+        ? result.words.map(({ text, start, end, confidence }) => ({
+            text, start, end, confidence,
           }))
         : [],
     },
     { new: true }
   );
 
-  await Lecture.findByIdAndUpdate(lectureId, {
-    processingStatus: "generating_quiz",
-  });
+  // Pipeline moves to quiz generation next
+  await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "generating_quiz" });
 
-  return res
-    .status(201)
-    .json(new ApiResponse(201, transcript, "Transcript generated"));
+  return res.status(201).json(new ApiResponse(201, transcript, "Transcript generated"));
 });
 
 
-// ================= GET TRANSCRIPT =================
 export const getTranscript = asyncHandler(async (req, res) => {
-  if (!req.user) throw new ApiError(401, "Login required");
-
-  if (req.user.role !== "instructor") {
-    throw new ApiError(403, "Only instructors allowed");
-  }
-
   const { lectureId } = req.params;
 
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-
-  if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
+  await getOwnedLecture(lectureId, req.user._id);
 
   const transcript = await Transcript.findOne({ lecture: lectureId });
-  if (!transcript) {
-    throw new ApiError(404, "Transcript not found");
-  }
+  if (!transcript) throw new ApiError(404, "Transcript not found");
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, transcript, "Transcript fetched"));
+  return res.status(200).json(new ApiResponse(200, transcript, "Transcript fetched"));
 });
 
 
-// ================= DELETE TRANSCRIPT =================
 export const deleteTranscript = asyncHandler(async (req, res) => {
-  if (!req.user) throw new ApiError(401, "Login required");
-
-  if (req.user.role !== "instructor") {
-    throw new ApiError(403, "Only instructors allowed");
-  }
-
   const { lectureId } = req.params;
 
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-
-  if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
+  await getOwnedLecture(lectureId, req.user._id);
 
   await Transcript.findOneAndDelete({ lecture: lectureId });
+  await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "pending" });
 
-  await Lecture.findByIdAndUpdate(lectureId, {
-    processingStatus: "pending",
-  });
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, null, "Transcript deleted"));
+  return res.status(200).json(new ApiResponse(200, null, "Transcript deleted"));
 });
-

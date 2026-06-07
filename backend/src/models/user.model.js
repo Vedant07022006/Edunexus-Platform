@@ -122,6 +122,9 @@ userSchema.index({ "enrolledCourses.course": 1 });
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
+  // Skip hashing if already hashed (useful when passing hashed password from PendingUser)
+  if (this.password.startsWith("$2b$") || this.password.startsWith("$2a$")) return;
+
   this.password = await bcrypt.hash(this.password, 12);
 });
 

@@ -7,11 +7,15 @@
 // import { Enrollment } from "../models/enrollment.model.js";
 // import Groq from "groq-sdk";
 
-// const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
+// const getGroqClient = () =>
+//   new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // const parseQuizResponse = (text) => {
 //   try {
-//     const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+//     const cleaned = text
+//       .replace(/```json/g, "")
+//       .replace(/```/g, "")
+//       .trim();
 //     return JSON.parse(cleaned);
 //   } catch (error) {
 //     throw new ApiError(500, "Failed to parse quiz response from AI");
@@ -23,7 +27,11 @@
 //   return text.slice(0, maxChars) + "...";
 // };
 
-// const buildPrompt = (transcriptText, totalQuestions, isDifferent = false) => `
+// const buildPrompt = (
+//   transcriptText,
+//   totalQuestions,
+//   isDifferent = false
+// ) => `
 // You are an expert quiz generator. Based on the following lecture transcript, generate exactly ${totalQuestions} multiple choice questions.
 
 // Transcript:
@@ -36,51 +44,68 @@
 // - Difficulty should be moderate
 // - Include a brief explanation for the correct answer
 // ${isDifferent ? "- Make questions different from any previous quiz on this topic\n" : ""}
-// Return ONLY a valid JSON array in this exact format (no markdown, no extra text):
+// Return ONLY a valid JSON array in this exact format:
 // [
 //   {
 //     "questionText": "Question here?",
 //     "options": ["Option A", "Option B", "Option C", "Option D"],
 //     "correctAnswer": "Option A",
-//     "explanation": "Brief explanation why this is correct"
+//     "explanation": "Explanation"
 //   }
 // ]`;
 
 
-// // GENERATE QUIZ — Instructor only
-
 // export const generateQuiz = asyncHandler(async (req, res) => {
+//   if (req.user.role !== "instructor") {
+//     throw new ApiError(403, "Only instructors allowed");
+//   }
+
 //   const { lectureId } = req.params;
 //   const { totalQuestions = 5 } = req.body;
 
 //   const lecture = await Lecture.findById(lectureId).populate("course");
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
+//   if (!lecture.course.instructor) throw new ApiError(404, "This course is no longer available");
 
 //   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-//     throw new ApiError(403, "You are not authorized to generate a quiz for this lecture");
+//     throw new ApiError(403, "Not authorized");
 //   }
 
-//   const transcript = await Transcript.findOne({ lecture: lectureId, status: "completed" });
-//   if (!transcript) {
-//     throw new ApiError(404, "Transcript not found. Please generate the transcript first.");
-//   }
+//   const transcript = await Transcript.findOne({
+//     lecture: lectureId,
+//     status: "completed",
+//   });
+//   if (!transcript) throw new ApiError(404, "Transcript not found");
 
 //   const existingQuiz = await Quiz.findOne({ lecture: lectureId });
 //   if (existingQuiz && existingQuiz.status === "ready") {
-//     return res.status(200).json(new ApiResponse(200, existingQuiz, "Quiz already exists for this lecture"));
+//     return res
+//       .status(200)
+//       .json(new ApiResponse(200, existingQuiz));
 //   }
 
 //   let quiz = await Quiz.findOneAndUpdate(
 //     { lecture: lectureId },
-//     { lecture: lectureId, course: lecture.course._id, status: "generating", questions: [] },
-//     { upsert: true, returnDocument: "after" }
+//     {
+//       lecture: lectureId,
+//       course: lecture.course._id,
+//       status: "generating",
+//       questions: [],
+//     },
+//     { upsert: true, new: true }
 //   );
 
-//   const trimmedTranscript = trimTranscript(transcript.transcriptText, 3000);
+//   const trimmedTranscript = trimTranscript(
+//     transcript.transcriptText,
+//     3000
+//   );
+
 //   const groq = getGroqClient();
 
 //   const completion = await groq.chat.completions.create({
-//     messages: [{ role: "user", content: buildPrompt(trimmedTranscript, totalQuestions) }],
+//     messages: [
+//       { role: "user", content: buildPrompt(trimmedTranscript, totalQuestions) },
+//     ],
 //     model: "llama-3.3-70b-versatile",
 //     temperature: 0.7,
 //     max_tokens: 2000,
@@ -91,7 +116,7 @@
 
 //   if (!Array.isArray(questions) || questions.length === 0) {
 //     await Quiz.findByIdAndUpdate(quiz._id, { status: "failed" });
-//     throw new ApiError(500, "AI returned invalid questions. Please try again.");
+//     throw new ApiError(500, "Invalid AI response");
 //   }
 
 //   quiz = await Quiz.findByIdAndUpdate(
@@ -108,15 +133,14 @@
 //       status: "ready",
 //       generatedByAi: true,
 //     },
-//     { returnDocument: "after" }
+//     { new: true }
 //   );
 
+//   // Mark lecture pipeline as fully complete
 //   await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "completed" });
 
-//   return res.status(201).json(new ApiResponse(201, quiz, "Quiz generated successfully"));
+//   return res.status(201).json(new ApiResponse(201, quiz));
 // });
-
-
 
 
 // export const getQuizByLecture = asyncHandler(async (req, res) => {
@@ -126,29 +150,42 @@
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
 
 //   const course = lecture.course;
-//   const isInstructor = course.instructor.toString() === req.user._id.toString();
+
+//   if (!course.instructor) {
+//     throw new ApiError(404, "This course is no longer available");
+//   }
+
+//   const isInstructor =
+//     req.user &&
+//     course.instructor.toString() === req.user._id.toString();
 
 //   if (!isInstructor) {
-//     // FREE course → any logged-in user can access the quiz
-//     // PAID course → must be enrolled first
 //     if (!course.isFree) {
+//       if (!req.user) {
+//         throw new ApiError(401, "Login required");
+//       }
+
 //       const enrollment = await Enrollment.findOne({
 //         user: req.user._id,
 //         course: course._id,
 //         isActive: true,
 //       });
+
 //       if (!enrollment) {
-//         throw new ApiError(403, "Please enroll in this course to access the quiz");
+//         throw new ApiError(403, "Enroll to access quiz");
 //       }
 //     }
 //   }
 
-//   const quiz = await Quiz.findOne({ lecture: lectureId, status: "ready" }).select("-__v");
-//   if (!quiz) throw new ApiError(404, "Quiz not found for this lecture");
+//   const quiz = await Quiz.findOne({
+//     lecture: lectureId,
+//     status: "ready",
+//   });
+
+//   if (!quiz) throw new ApiError(404, "Quiz not found");
 
 //   let quizData = quiz.toObject();
 
-//   // Hide correct answers and explanations from students
 //   if (!isInstructor) {
 //     quizData.questions = quizData.questions.map((q) => ({
 //       _id: q._id,
@@ -157,37 +194,59 @@
 //     }));
 //   }
 
-//   return res.status(200).json(new ApiResponse(200, quizData, "Quiz fetched successfully"));
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, quizData));
 // });
 
 
-// // REGENERATE QUIZ — Instructor only
-
 // export const regenerateQuiz = asyncHandler(async (req, res) => {
+//   if (req.user.role !== "instructor") {
+//     throw new ApiError(403, "Only instructors allowed");
+//   }
+
 //   const { lectureId } = req.params;
 //   const { totalQuestions = 5 } = req.body;
 
 //   const lecture = await Lecture.findById(lectureId).populate("course");
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
+//   if (!lecture.course.instructor) throw new ApiError(404, "This course is no longer available");
 
 //   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-//     throw new ApiError(403, "You are not authorized to regenerate the quiz for this lecture");
+//     throw new ApiError(403, "Not authorized");
 //   }
 
 //   await Quiz.findOneAndDelete({ lecture: lectureId });
 
-//   const transcript = await Transcript.findOne({ lecture: lectureId, status: "completed" });
-//   if (!transcript) throw new ApiError(404, "Transcript not found. Please generate transcript first.");
+//   const transcript = await Transcript.findOne({
+//     lecture: lectureId,
+//     status: "completed",
+//   });
+//   if (!transcript) throw new ApiError(404, "Transcript not found");
 
-//   // Skip validation on empty questions during generating phase
-//   let quiz = new Quiz({ lecture: lectureId, course: lecture.course._id, status: "generating", questions: [] });
+//   let quiz = new Quiz({
+//     lecture: lectureId,
+//     course: lecture.course._id,
+//     status: "generating",
+//     questions: [],
+//   });
+
 //   await quiz.save({ validateBeforeSave: false });
 
-//   const trimmedTranscript = trimTranscript(transcript.transcriptText, 3000);
+//   const trimmedTranscript = trimTranscript(
+//     transcript.transcriptText,
+//     3000
+//   );
+
 //   const groq = getGroqClient();
 
 //   const completion = await groq.chat.completions.create({
-//     messages: [{ role: "user", content: buildPrompt(trimmedTranscript, totalQuestions, true) }],
+//     messages: [
+//       {
+//         role: "user",
+//         content: buildPrompt(trimmedTranscript, totalQuestions, true),
+//       },
+//     ],
 //     model: "llama-3.3-70b-versatile",
 //     temperature: 0.7,
 //     max_tokens: 2000,
@@ -198,7 +257,7 @@
 
 //   if (!Array.isArray(questions) || questions.length === 0) {
 //     await Quiz.findByIdAndUpdate(quiz._id, { status: "failed" });
-//     throw new ApiError(500, "AI returned invalid questions. Please try again.");
+//     throw new ApiError(500, "Invalid AI response");
 //   }
 
 //   quiz = await Quiz.findByIdAndUpdate(
@@ -215,35 +274,37 @@
 //       status: "ready",
 //       generatedByAi: true,
 //     },
-//     { returnDocument: "after" }
+//     { new: true }
 //   );
 
-//   return res.status(201).json(new ApiResponse(201, quiz, "Quiz regenerated successfully"));
+//   // Mark lecture pipeline as fully complete
+//   await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "completed" });
+
+//   return res.status(201).json(new ApiResponse(201, quiz));
 // });
 
 
-// // DELETE QUIZ — Instructor only
-
 // export const deleteQuiz = asyncHandler(async (req, res) => {
+//   if (req.user.role !== "instructor") {
+//     throw new ApiError(403, "Only instructors allowed");
+//   }
+
 //   const { lectureId } = req.params;
 
 //   const lecture = await Lecture.findById(lectureId).populate("course");
 //   if (!lecture) throw new ApiError(404, "Lecture not found");
+//   if (!lecture.course.instructor) throw new ApiError(404, "This course is no longer available");
 
 //   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-//     throw new ApiError(403, "You are not authorized to delete this quiz");
+//     throw new ApiError(403, "Not authorized");
 //   }
 
 //   await Quiz.findOneAndDelete({ lecture: lectureId });
-//   await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "completed" });
 
-//   return res.status(200).json(new ApiResponse(200, null, "Quiz deleted successfully"));
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, null, "Quiz deleted"));
 // });
-
-
-
-
-
 
 
 
@@ -258,31 +319,14 @@ import { Lecture } from "../models/lecture.model.js";
 import { Enrollment } from "../models/enrollment.model.js";
 import Groq from "groq-sdk";
 
-const getGroqClient = () =>
-  new Groq({ apiKey: process.env.GROQ_API_KEY });
+// ─── Groq helpers ──────────────────────────────────────────────────────────────
 
-const parseQuizResponse = (text) => {
-  try {
-    const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-    return JSON.parse(cleaned);
-  } catch (error) {
-    throw new ApiError(500, "Failed to parse quiz response from AI");
-  }
-};
+const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-const trimTranscript = (text, maxChars = 3000) => {
-  if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars) + "...";
-};
+const trimTranscript = (text, maxChars = 3000) =>
+  text.length <= maxChars ? text : text.slice(0, maxChars) + "...";
 
-const buildPrompt = (
-  transcriptText,
-  totalQuestions,
-  isDifferent = false
-) => `
+const buildPrompt = (transcriptText, totalQuestions, isDifferent = false) => `
 You are an expert quiz generator. Based on the following lecture transcript, generate exactly ${totalQuestions} multiple choice questions.
 
 Transcript:
@@ -305,57 +349,45 @@ Return ONLY a valid JSON array in this exact format:
   }
 ]`;
 
-// ================= GENERATE QUIZ =================
-export const generateQuiz = asyncHandler(async (req, res) => {
-  if (req.user.role !== "instructor") {
-    throw new ApiError(403, "Only instructors allowed");
+const parseQuizResponse = (text) => {
+  try {
+    const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    throw new ApiError(500, "Failed to parse quiz response from AI");
   }
+};
 
-  const { lectureId } = req.params;
-  const { totalQuestions = 5 } = req.body;
+// ─── Shared helper ─────────────────────────────────────────────────────────────
 
+/**
+ * Finds a lecture owned by the instructor and returns both the lecture
+ * and a completed transcript. Throws on any failure.
+ */
+const getOwnedLectureWithTranscript = async (lectureId, instructorId) => {
   const lecture = await Lecture.findById(lectureId).populate("course");
   if (!lecture) throw new ApiError(404, "Lecture not found");
-
-  if (lecture.course.instructor.toString() !== req.user._id.toString()) {
+  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
+  if (lecture.course.instructor.toString() !== instructorId.toString()) {
     throw new ApiError(403, "Not authorized");
   }
 
-  const transcript = await Transcript.findOne({
-    lecture: lectureId,
-    status: "completed",
-  });
-  if (!transcript) throw new ApiError(404, "Transcript not found");
+  const transcript = await Transcript.findOne({ lecture: lectureId, status: "completed" });
+  if (!transcript) throw new ApiError(404, "Completed transcript not found. Generate a transcript first.");
 
-  const existingQuiz = await Quiz.findOne({ lecture: lectureId });
-  if (existingQuiz && existingQuiz.status === "ready") {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, existingQuiz));
-  }
+  return { lecture, transcript };
+};
 
-  let quiz = await Quiz.findOneAndUpdate(
-    { lecture: lectureId },
-    {
-      lecture: lectureId,
-      course: lecture.course._id,
-      status: "generating",
-      questions: [],
-    },
-    { upsert: true, new: true }
-  );
-
-  const trimmedTranscript = trimTranscript(
-    transcript.transcriptText,
-    3000
-  );
-
+/**
+ * Calls Groq to generate quiz questions and saves them on the given quiz doc.
+ * Returns the updated quiz.
+ */
+const runQuizGeneration = async (quizId, lectureTitle, transcriptText, totalQuestions, isDifferent = false) => {
+  const trimmed = trimTranscript(transcriptText, 3000);
   const groq = getGroqClient();
 
   const completion = await groq.chat.completions.create({
-    messages: [
-      { role: "user", content: buildPrompt(trimmedTranscript, totalQuestions) },
-    ],
+    messages: [{ role: "user", content: buildPrompt(trimmed, totalQuestions, isDifferent) }],
     model: "llama-3.3-70b-versatile",
     temperature: 0.7,
     max_tokens: 2000,
@@ -365,14 +397,14 @@ export const generateQuiz = asyncHandler(async (req, res) => {
   const questions = parseQuizResponse(text);
 
   if (!Array.isArray(questions) || questions.length === 0) {
-    await Quiz.findByIdAndUpdate(quiz._id, { status: "failed" });
-    throw new ApiError(500, "Invalid AI response");
+    await Quiz.findByIdAndUpdate(quizId, { status: "failed" });
+    throw new ApiError(500, "Invalid AI response — no questions returned");
   }
 
-  quiz = await Quiz.findByIdAndUpdate(
-    quiz._id,
+  return Quiz.findByIdAndUpdate(
+    quizId,
     {
-      title: `Quiz for ${lecture.title}`,
+      title: `Quiz for ${lectureTitle}`,
       questions: questions.map((q) => ({
         questionText: q.questionText,
         options: q.options,
@@ -385,11 +417,72 @@ export const generateQuiz = asyncHandler(async (req, res) => {
     },
     { new: true }
   );
+};
 
-  return res.status(201).json(new ApiResponse(201, quiz));
+// ─── Controllers ───────────────────────────────────────────────────────────────
+
+export const generateQuiz = asyncHandler(async (req, res) => {
+  const { lectureId } = req.params;
+  const { totalQuestions = 5 } = req.body;
+
+  const { lecture, transcript } = await getOwnedLectureWithTranscript(lectureId, req.user._id);
+
+  // Return existing ready quiz instead of regenerating
+  const existingQuiz = await Quiz.findOne({ lecture: lectureId, status: "ready" });
+  if (existingQuiz) {
+    return res.status(200).json(new ApiResponse(200, existingQuiz));
+  }
+
+  // Upsert a "generating" placeholder
+  const quiz = await Quiz.findOneAndUpdate(
+    { lecture: lectureId },
+    { lecture: lectureId, course: lecture.course._id, status: "generating", questions: [] },
+    { upsert: true, new: true }
+  );
+
+  const finalQuiz = await runQuizGeneration(
+    quiz._id,
+    lecture.title,
+    transcript.transcriptText,
+    totalQuestions
+  );
+
+  await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "completed" });
+
+  return res.status(201).json(new ApiResponse(201, finalQuiz));
 });
 
-// ================= GET QUIZ =================
+
+export const regenerateQuiz = asyncHandler(async (req, res) => {
+  const { lectureId } = req.params;
+  const { totalQuestions = 5 } = req.body;
+
+  const { lecture, transcript } = await getOwnedLectureWithTranscript(lectureId, req.user._id);
+
+  // Delete any existing quiz so we start fresh
+  await Quiz.findOneAndDelete({ lecture: lectureId });
+
+  const quiz = await new Quiz({
+    lecture: lectureId,
+    course: lecture.course._id,
+    status: "generating",
+    questions: [],
+  }).save({ validateBeforeSave: false });
+
+  const finalQuiz = await runQuizGeneration(
+    quiz._id,
+    lecture.title,
+    transcript.transcriptText,
+    totalQuestions,
+    true // isDifferent — prompts AI to vary the questions
+  );
+
+  await Lecture.findByIdAndUpdate(lectureId, { processingStatus: "completed" });
+
+  return res.status(201).json(new ApiResponse(201, finalQuiz));
+});
+
+
 export const getQuizByLecture = asyncHandler(async (req, res) => {
   const { lectureId } = req.params;
 
@@ -397,141 +490,47 @@ export const getQuizByLecture = asyncHandler(async (req, res) => {
   if (!lecture) throw new ApiError(404, "Lecture not found");
 
   const course = lecture.course;
+  if (!course?.instructor) throw new ApiError(404, "This course is no longer available");
 
   const isInstructor =
-    req.user &&
-    course.instructor.toString() === req.user._id.toString();
+    req.user && course.instructor.toString() === req.user._id.toString();
 
-  if (!isInstructor) {
-    if (!course.isFree) {
-      if (!req.user) {
-        throw new ApiError(401, "Login required");
-      }
+  if (!isInstructor && !course.isFree) {
+    if (!req.user) throw new ApiError(401, "Login required");
 
-      const enrollment = await Enrollment.findOne({
-        user: req.user._id,
-        course: course._id,
-        isActive: true,
-      });
+    const enrollment = await Enrollment.findOne({
+      user: req.user._id,
+      course: course._id,
+      isActive: true,
+    });
 
-      if (!enrollment) {
-        throw new ApiError(403, "Enroll to access quiz");
-      }
-    }
+    if (!enrollment) throw new ApiError(403, "Enroll to access quiz");
   }
 
-  const quiz = await Quiz.findOne({
-    lecture: lectureId,
-    status: "ready",
-  });
-
+  const quiz = await Quiz.findOne({ lecture: lectureId, status: "ready" });
   if (!quiz) throw new ApiError(404, "Quiz not found");
 
   let quizData = quiz.toObject();
 
+  // Strip correct answers and explanations from student view
   if (!isInstructor) {
-    quizData.questions = quizData.questions.map((q) => ({
-      _id: q._id,
-      questionText: q.questionText,
-      options: q.options,
+    quizData.questions = quizData.questions.map(({ _id, questionText, options }) => ({
+      _id,
+      questionText,
+      options,
     }));
   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, quizData));
+  return res.status(200).json(new ApiResponse(200, quizData));
 });
 
-// ================= REGENERATE QUIZ =================
-export const regenerateQuiz = asyncHandler(async (req, res) => {
-  if (req.user.role !== "instructor") {
-    throw new ApiError(403, "Only instructors allowed");
-  }
 
-  const { lectureId } = req.params;
-  const { totalQuestions = 5 } = req.body;
-
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-
-  if (lecture.course.instructor.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
-
-  await Quiz.findOneAndDelete({ lecture: lectureId });
-
-  const transcript = await Transcript.findOne({
-    lecture: lectureId,
-    status: "completed",
-  });
-  if (!transcript) throw new ApiError(404, "Transcript not found");
-
-  let quiz = new Quiz({
-    lecture: lectureId,
-    course: lecture.course._id,
-    status: "generating",
-    questions: [],
-  });
-
-  await quiz.save({ validateBeforeSave: false });
-
-  const trimmedTranscript = trimTranscript(
-    transcript.transcriptText,
-    3000
-  );
-
-  const groq = getGroqClient();
-
-  const completion = await groq.chat.completions.create({
-    messages: [
-      {
-        role: "user",
-        content: buildPrompt(trimmedTranscript, totalQuestions, true),
-      },
-    ],
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.7,
-    max_tokens: 2000,
-  });
-
-  const text = completion.choices[0]?.message?.content || "";
-  const questions = parseQuizResponse(text);
-
-  if (!Array.isArray(questions) || questions.length === 0) {
-    await Quiz.findByIdAndUpdate(quiz._id, { status: "failed" });
-    throw new ApiError(500, "Invalid AI response");
-  }
-
-  quiz = await Quiz.findByIdAndUpdate(
-    quiz._id,
-    {
-      title: `Quiz for ${lecture.title}`,
-      questions: questions.map((q) => ({
-        questionText: q.questionText,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation || "",
-      })),
-      totalQuestions: questions.length,
-      status: "ready",
-      generatedByAi: true,
-    },
-    { new: true }
-  );
-
-  return res.status(201).json(new ApiResponse(201, quiz));
-});
-
-// ================= DELETE QUIZ =================
 export const deleteQuiz = asyncHandler(async (req, res) => {
-  if (req.user.role !== "instructor") {
-    throw new ApiError(403, "Only instructors allowed");
-  }
-
   const { lectureId } = req.params;
 
   const lecture = await Lecture.findById(lectureId).populate("course");
   if (!lecture) throw new ApiError(404, "Lecture not found");
+  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
 
   if (lecture.course.instructor.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not authorized");
@@ -539,8 +538,5 @@ export const deleteQuiz = asyncHandler(async (req, res) => {
 
   await Quiz.findOneAndDelete({ lecture: lectureId });
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, null, "Quiz deleted"));
+  return res.status(200).json(new ApiResponse(200, null, "Quiz deleted"));
 });
-

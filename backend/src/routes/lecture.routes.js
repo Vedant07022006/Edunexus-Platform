@@ -14,17 +14,11 @@ import { uploadVideo } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
+// PUBLIC — students can view course lectures (gated by enrollment in controller)
+router.get("/course/:courseId", optionalAuth, getCourseLectures);
 
-router.get("/course/:courseId", optionalAuth , getCourseLectures);
-
-
-// PROTECTED ROUTES — login required
-
-router.get("/:lectureId", verifyJWT, getLectureById);
-
-
-// INSTRUCTOR ROUTES — instructor only
-
+// INSTRUCTOR ROUTES — must be defined BEFORE /:lectureId to prevent
+// Express from matching "instructor" as a lectureId parameter
 router.post(
   "/course/:courseId",
   verifyJWT,
@@ -46,5 +40,8 @@ router.patch(
   updateLecture
 );
 router.delete("/:lectureId", verifyJWT, isInstructor, deleteLecture);
+
+// PROTECTED ROUTES — login required (MUST come after /instructor/course/:courseId)
+router.get("/:lectureId", verifyJWT, getLectureById);
 
 export default router;

@@ -6,6 +6,7 @@ import {
   deleteQuiz,
 } from "../controllers/quiz.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
+import optionalAuth from "../middlewares/optionalAuth.middleware.js";
 import { isInstructor } from "../middlewares/role.middleware.js";
 
 const router = Router();
@@ -35,6 +36,6 @@ router.delete(
 
 // STUDENT + INSTRUCTOR ROUTES
 
-router.get("/:lectureId", verifyJWT, getQuizByLecture);
+router.get("/:lectureId", optionalAuth, getQuizByLecture);
 
 export default router;
