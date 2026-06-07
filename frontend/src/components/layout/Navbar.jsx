@@ -97,7 +97,7 @@ export default function Navbar() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-52 glass-strong rounded-2xl overflow-hidden shadow-xl border border-white/10"
+                      className="absolute right-0 mt-2 w-52 rounded-2xl overflow-hidden shadow-xl border border-white/10 bg-[#1a1d2e]"
                     >
                       <div className="p-3 border-b border-white/[0.06]">
                         <p className="text-xs text-slate-400">Signed in as</p>
