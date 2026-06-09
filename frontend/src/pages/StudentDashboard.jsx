@@ -5,12 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { getMyEnrollments } from '../services/api.service';
 import CourseCard, { CourseCardSkeleton } from '../components/courses/CourseCard';
 import Navbar from '../components/layout/Navbar';
-import { BookOpen, Clock, Trophy, TrendingUp, Play, ArrowRight } from 'lucide-react';
+import { BookOpen, Clock, Trophy, TrendingUp, Play, ArrowRight, Receipt } from 'lucide-react';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
   const [enrollments, setEnrollments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     getMyEnrollments()
@@ -22,20 +22,20 @@ export default function StudentDashboard() {
   const avgProgress = enrollments.length
     ? Math.round(enrollments.reduce((s, e) => s + e.progress, 0) / enrollments.length)
     : 0;
-
-  const completed = enrollments.filter(e => e.progress === 100).length;
+  const completed = enrollments.filter((e) => e.progress === 100).length;
 
   const stats = [
-    { icon: BookOpen, label: 'Enrolled', value: enrollments.length, color: 'text-primary-400' },
-    { icon: Trophy, label: 'Completed', value: completed, color: 'text-yellow-400' },
-    { icon: TrendingUp, label: 'Avg Progress', value: `${avgProgress}%`, color: 'text-emerald-400' },
-    { icon: Clock, label: 'In Progress', value: enrollments.length - completed, color: 'text-purple-400' },
+    { icon: BookOpen,    label: 'Enrolled',    value: enrollments.length,          color: 'text-primary-400' },
+    { icon: Trophy,      label: 'Completed',   value: completed,                   color: 'text-yellow-400' },
+    { icon: TrendingUp,  label: 'Avg Progress',value: `${avgProgress}%`,           color: 'text-emerald-400' },
+    { icon: Clock,       label: 'In Progress', value: enrollments.length - completed, color: 'text-purple-400' },
   ];
 
   return (
     <div className="min-h-screen">
       <Navbar />
       <div className="pt-20 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <p className="text-sm text-slate-500">Welcome back,</p>
@@ -60,6 +60,19 @@ export default function StudentDashboard() {
               <p className="text-xs text-slate-500 mt-0.5">{label}</p>
             </motion.div>
           ))}
+        </div>
+
+        {/* Quick links */}
+        <div className="mb-8">
+          <Link
+            to="/dashboard/purchases"
+            className="inline-flex items-center gap-2 text-sm glass border border-white/[0.06]
+                       rounded-xl px-4 py-2.5 text-slate-300 hover:text-white transition-all"
+          >
+            <Receipt size={15} className="text-primary-400" />
+            View My Purchases & Payment History
+            <ArrowRight size={13} />
+          </Link>
         </div>
 
         {/* My Courses */}
@@ -98,7 +111,11 @@ export default function StudentDashboard() {
                   <div className="glass rounded-2xl overflow-hidden border border-white/[0.06] card-hover group">
                     <div className="relative aspect-video bg-surface-3">
                       {enrollment.course.thumbnail?.url ? (
-                        <img src={enrollment.course.thumbnail.url} alt={enrollment.course.title} className="w-full h-full object-cover" />
+                        <img
+                          src={enrollment.course.thumbnail.url}
+                          alt={enrollment.course.title}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <BookOpen size={32} className="text-primary-400 opacity-40" />
@@ -113,7 +130,6 @@ export default function StudentDashboard() {
                     <div className="p-4">
                       <h3 className="font-semibold text-white text-sm line-clamp-1">{enrollment.course.title}</h3>
                       <p className="text-xs text-slate-500 mt-0.5">{enrollment.course.instructor?.fullName}</p>
-                      {/* Progress */}
                       <div className="mt-3">
                         <div className="flex justify-between text-xs text-slate-500 mb-1">
                           <span>Progress</span><span>{enrollment.progress}%</span>
