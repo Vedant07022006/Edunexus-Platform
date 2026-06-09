@@ -24,7 +24,6 @@ const getTransporter = async () => {
 
 export const sendOtpEmail = async (to, otp) => {
   const transporter = await getTransporter();
-
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
     to,
@@ -46,7 +45,6 @@ export const sendOtpEmail = async (to, otp) => {
 
 export const sendResetPasswordEmail = async (to, resetLink) => {
   const transporter = await getTransporter();
-
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
     to,
@@ -72,7 +70,6 @@ export const sendResetPasswordEmail = async (to, resetLink) => {
 
 export const sendEnrollmentEmail = async (to, { studentName, courseName }) => {
   const transporter = await getTransporter();
-
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
     to,
@@ -94,7 +91,6 @@ export const sendEnrollmentEmail = async (to, { studentName, courseName }) => {
 
 export const sendPaymentSuccessEmail = async (to, { studentName, courseName, amount }) => {
   const transporter = await getTransporter();
-
   await transporter.sendMail({
     from: `"EduNexus" <${process.env.EMAIL_USER}>`,
     to,
@@ -103,11 +99,61 @@ export const sendPaymentSuccessEmail = async (to, { studentName, courseName, amo
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2>Payment Successful!</h2>
         <p>Hi <strong>${studentName}</strong>,</p>
-        <p>Your payment of <strong>₹${amount}</strong> for 
+        <p>Your payment of <strong>₹${amount}</strong> for
            <strong>${courseName}</strong> was successful.</p>
         <p>You now have full access to the course.</p>
         <p style="color: #888; font-size: 12px;">
           Thank you for learning with EduNexus!
+        </p>
+      </div>
+    `,
+  });
+};
+
+
+// ─── NEW: Notify instructor when a student enrolls ─────────────────────────────
+export const sendInstructorEnrollmentEmail = async (
+  to,
+  { instructorName, studentName, courseName, amount, enrolledAt }
+) => {
+  const transporter = await getTransporter();
+  const dateStr = new Date(enrolledAt).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+  const amountStr = amount > 0 ? `₹${amount}` : "Free";
+
+  await transporter.sendMail({
+    from: `"EduNexus" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: `New enrollment in ${courseName}!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>New Student Enrolled!</h2>
+        <p>Hi <strong>${instructorName}</strong>,</p>
+        <p>
+          Great news! <strong>${studentName}</strong> has just enrolled in your course
+          <strong>${courseName}</strong>.
+        </p>
+        <table style="border-collapse: collapse; margin: 16px 0;">
+          <tr>
+            <td style="padding: 6px 16px 6px 0; color: #888;">Student</td>
+            <td style="padding: 6px 0;"><strong>${studentName}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 16px 6px 0; color: #888;">Course</td>
+            <td style="padding: 6px 0;"><strong>${courseName}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 16px 6px 0; color: #888;">Amount</td>
+            <td style="padding: 6px 0;"><strong>${amountStr}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 16px 6px 0; color: #888;">Date</td>
+            <td style="padding: 6px 0;">${dateStr}</td>
+          </tr>
+        </table>
+        <p style="color: #888; font-size: 12px;">
+          Keep up the great work!<br/>Team EduNexus
         </p>
       </div>
     `,
