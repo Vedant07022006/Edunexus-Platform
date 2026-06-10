@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, Users, IndianRupee, TrendingUp, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BookOpen, Users, IndianRupee, TrendingUp,
+  Search, ChevronDown, ChevronUp,
+} from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Pagination from '../components/ui/Pagination';
 import { getRevenueStats, getRevenueCourses } from '../services/api.service';
@@ -34,7 +37,11 @@ export default function InstructorRevenuePage() {
   const [courses,    setCourses]    = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading,    setLoading]    = useState(true);
-  const [expanded,   setExpanded]   = useState({});
+
+  // Which course is expanded — only one at a time
+  const [expandedId,   setExpandedId]   = useState(null);
+  // Show all students toggle per course
+  const [showAllMap,   setShowAllMap]   = useState({});
 
   const [search, setSearch] = useState('');
   const [sort,   setSort]   = useState('revenue');
@@ -53,6 +60,9 @@ export default function InstructorRevenuePage() {
       const { data } = await getRevenueCourses({ page, limit: 5, search, sort });
       setCourses(data.data.courses);
       setPagination(data.data.pagination);
+      // Reset expanded state on new fetch
+      setExpandedId(null);
+      setShowAllMap({});
     } catch {
       toast.error('Failed to load revenue data');
     } finally {
@@ -63,8 +73,11 @@ export default function InstructorRevenuePage() {
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
   useEffect(() => { setPage(1); }, [search, sort]);
 
-  const toggleExpand = (id) =>
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleCourse = (id) =>
+    setExpandedId((prev) => (prev === id ? null : id));
+
+  const toggleShowAll = (id) =>
+    setShowAllMap((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div className="min-h-screen">
@@ -81,10 +94,10 @@ export default function InstructorRevenuePage() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { icon: IndianRupee, label: 'Total Revenue',   value: stats ? `₹${stats.totalRevenue}`    : '—', color: 'text-primary-400' },
-            { icon: TrendingUp,  label: 'This Month',      value: stats ? `₹${stats.thisMonthRevenue}` : '—', color: 'text-emerald-400' },
-            { icon: Users,       label: 'Total Students',  value: stats ? stats.totalStudents           : '—', color: 'text-yellow-400' },
-            { icon: BookOpen,    label: 'Total Courses',   value: stats ? stats.totalCourses            : '—', color: 'text-purple-400' },
+            { icon: IndianRupee, label: 'Total Revenue',  value: stats ? `₹${stats.totalRevenue}`    : '—', color: 'text-primary-400' },
+            { icon: TrendingUp,  label: 'This Month',     value: stats ? `₹${stats.thisMonthRevenue}` : '—', color: 'text-emerald-400' },
+            { icon: Users,       label: 'Total Students', value: stats ? stats.totalStudents           : '—', color: 'text-yellow-400' },
+            { icon: BookOpen,    label: 'Total Courses',  value: stats ? stats.totalCourses            : '—', color: 'text-purple-400' },
           ].map(({ icon: Icon, label, value, color }, i) => (
             <motion.div
               key={label}
@@ -128,9 +141,9 @@ export default function InstructorRevenuePage() {
 
         {/* Course list */}
         {loading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="glass rounded-2xl h-28 animate-pulse border border-white/[0.06]" />
+              <div key={i} className="glass rounded-2xl h-20 animate-pulse border border-white/[0.06]" />
             ))}
           </div>
         ) : courses.length === 0 ? (
@@ -142,11 +155,13 @@ export default function InstructorRevenuePage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {courses.map((course, i) => {
-              const isExp       = expanded[course._id];
-              const hasMore     = course.students.length > 3;
-              const visibleStudents = isExp ? course.students : course.students.slice(0, 3);
+              const isExpanded = expandedId === course._id;
+              const showAll    = showAllMap[course._id];
+              const visibleStudents = showAll
+                ? course.students
+                : course.students.slice(0, 3);
 
               return (
                 <motion.div
@@ -154,10 +169,16 @@ export default function InstructorRevenuePage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass rounded-2xl border border-white/[0.06] overflow-hidden"
+                  className={`glass rounded-2xl border overflow-hidden transition-all ${
+                    isExpanded ? 'border-primary-500/30' : 'border-white/[0.06]'
+                  }`}
                 >
-                  {/* Course header */}
-                  <div className="flex items-center gap-4 p-4 border-b border-white/[0.06]">
+                  {/* ── Course header — clickable to expand ── */}
+                  <button
+                    onClick={() => toggleCourse(course._id)}
+                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/[0.02] transition-colors"
+                  >
+                    {/* Thumbnail */}
                     <div className="w-14 h-10 rounded-xl overflow-hidden bg-surface-3 flex-shrink-0">
                       {course.thumbnail?.url ? (
                         <img
@@ -172,6 +193,7 @@ export default function InstructorRevenuePage() {
                       )}
                     </div>
 
+                    {/* Course info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-white text-sm truncate">{course.title}</h3>
                       <p className="text-xs text-slate-500 mt-0.5">
@@ -181,7 +203,8 @@ export default function InstructorRevenuePage() {
                       </p>
                     </div>
 
-                    <div className="text-right flex-shrink-0">
+                    {/* Revenue */}
+                    <div className="text-right flex-shrink-0 mr-2">
                       <p className="text-xs text-slate-500">Revenue</p>
                       <p className={`text-base font-bold mt-0.5 ${
                         course.isFree ? 'text-emerald-400' : 'text-white'
@@ -189,52 +212,74 @@ export default function InstructorRevenuePage() {
                         {course.isFree ? 'Free' : `₹${course.revenue}`}
                       </p>
                     </div>
-                  </div>
 
-                  {/* Students list */}
-                  <div className="p-4">
-                    {course.students.length === 0 ? (
-                      <p className="text-xs text-slate-500 text-center py-2">No students yet</p>
-                    ) : (
-                      <>
-                        <div className="space-y-3">
-                          {visibleStudents.map((student, j) => (
-                            <div key={j} className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center
-                                                text-xs font-semibold flex-shrink-0 ${getColor(student.studentName)}`}>
-                                  {getInitials(student.studentName)}
-                                </div>
-                                <div>
-                                  <p className="text-sm text-white">{student.studentName}</p>
-                                  <p className="text-xs text-slate-500">Enrolled {formatDate(student.enrolledAt)}</p>
-                                </div>
+                    {/* Expand arrow */}
+                    <div className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </div>
+                  </button>
+
+                  {/* ── Student list — shown when expanded ── */}
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 border-t border-white/[0.06] pt-3">
+                          {course.students.length === 0 ? (
+                            <p className="text-xs text-slate-500 text-center py-3">
+                              No students enrolled yet
+                            </p>
+                          ) : (
+                            <>
+                              <div className="space-y-3">
+                                {visibleStudents.map((student, j) => (
+                                  <div key={j} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center
+                                                      text-xs font-semibold flex-shrink-0 ${getColor(student.studentName)}`}>
+                                        {getInitials(student.studentName)}
+                                      </div>
+                                      <div>
+                                        <p className="text-sm text-white">{student.studentName}</p>
+                                        <p className="text-xs text-slate-500">
+                                          Enrolled {formatDate(student.enrolledAt)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className={`text-sm font-medium ${
+                                      student.amountPaid === 0 ? 'text-emerald-400' : 'text-white'
+                                    }`}>
+                                      {student.amountPaid === 0 ? 'Free' : `₹${student.amountPaid}`}
+                                    </p>
+                                  </div>
+                                ))}
                               </div>
-                              <p className={`text-sm font-medium ${
-                                student.amountPaid === 0 ? 'text-emerald-400' : 'text-white'
-                              }`}>
-                                {student.amountPaid === 0 ? 'Free' : `₹${student.amountPaid}`}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
 
-                        {hasMore && (
-                          <button
-                            onClick={() => toggleExpand(course._id)}
-                            className="mt-3 flex items-center gap-1 text-xs text-primary-400
-                                       hover:text-primary-300 transition-colors"
-                          >
-                            {isExp ? (
-                              <><ChevronUp size={13} /> Show less</>
-                            ) : (
-                              <><ChevronDown size={13} /> Show all {course.students.length} students</>
-                            )}
-                          </button>
-                        )}
-                      </>
+                              {/* Show all / Show less */}
+                              {course.students.length > 3 && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleShowAll(course._id); }}
+                                  className="mt-3 flex items-center gap-1 text-xs text-primary-400
+                                             hover:text-primary-300 transition-colors"
+                                >
+                                  {showAll ? (
+                                    <><ChevronUp size={13} /> Show less</>
+                                  ) : (
+                                    <><ChevronDown size={13} /> Show all {course.students.length} students</>
+                                  )}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
+                  </AnimatePresence>
                 </motion.div>
               );
             })}
@@ -243,7 +288,7 @@ export default function InstructorRevenuePage() {
 
         {/* Pagination */}
         <Pagination
-          currentPage={pagination.page}
+          currentPage={page}
           totalPages={pagination.totalPages}
           onPageChange={setPage}
         />
