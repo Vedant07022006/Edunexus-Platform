@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { getCourseLectures, updateProgress, checkEnrollment } from '../../services/api.service';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle, Lock, BookOpen, Clock } from 'lucide-react';
+import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QuizSection from '../quiz/QuizSection';
 
@@ -97,14 +97,18 @@ export default function LecturePlayer({ courseId }) {
     </div>
   );
 
-  const lectures   = lecturesData?.lectures || [];
-  const isEnrolled = lecturesData?.isEnrolled;
-  const progress   = isEnrolled
+  const lectures     = lecturesData?.lectures || [];
+  const isEnrolled   = lecturesData?.isEnrolled;
+  const isInstructor = lecturesData?.isInstructor;
+
+  const progress = isEnrolled
     ? Math.round((completedIds.length / Math.max(lectures.length, 1)) * 100)
     : 0;
 
-  const videoUrl = activeLecture?.video?.url;
-  const hasVideo = !!videoUrl;
+  // Instructor gets full video access to their own course
+  const hasFullAccess = isInstructor || isEnrolled || lecturesData?.isFree || activeLecture?.isFree;
+  const videoUrl      = hasFullAccess ? activeLecture?.video?.url : null;
+  const hasVideo      = !!videoUrl;
 
   const TABS = [
     { id: 'overview', label: '📋 Overview' },
@@ -116,6 +120,16 @@ export default function LecturePlayer({ courseId }) {
 
       {/* Player Area */}
       <div className="flex-1 min-w-0">
+
+        {/* Course Owner badge — only visible to instructor */}
+        {isInstructor && (
+          <div className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium
+                          bg-yellow-500/10 border border-yellow-500/20 text-yellow-400
+                          px-3 py-1.5 rounded-full">
+            <ShieldCheck size={13} />
+            Course Owner — Preview Mode
+          </div>
+        )}
 
         {/* Video */}
         <div className="rounded-2xl overflow-hidden bg-black aspect-video">
@@ -183,7 +197,6 @@ export default function LecturePlayer({ courseId }) {
                   </span>
                 )}
 
-                {/* ✅ FIXED: now checks course-level isFree too */}
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   lecturesData?.isFree || activeLecture.isFree
                     ? 'bg-emerald-500/20 text-emerald-400'
@@ -219,27 +232,39 @@ export default function LecturePlayer({ courseId }) {
           <h3 className="font-semibold text-white text-sm">Course Content</h3>
           <p className="text-xs text-slate-500 mt-0.5">{lectures.length} lectures</p>
 
-          <div className="mt-3">
-            <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>Progress</span>
-              <span>{progress}%</span>
+          {/* Progress bar — only for students */}
+          {!isInstructor && (
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-slate-500 mb-1">
+                <span>Progress</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full gradient-primary rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
             </div>
-            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full gradient-primary rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5 }}
-              />
+          )}
+
+          {/* Instructor label instead of progress */}
+          {isInstructor && (
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-yellow-400">
+              <ShieldCheck size={11} />
+              Viewing as course owner
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
           {lectures.map((lecture, i) => {
             const isActive = activeLecture?._id === lecture._id;
             const isDone   = completedIds.includes(lecture._id);
-            const isLocked = !isEnrolled && !lecturesData?.isFree && !lecture.isFree;
+            // Instructor is never locked
+            const isLocked = !isInstructor && !isEnrolled && !lecturesData?.isFree && !lecture.isFree;
 
             return (
               <button
