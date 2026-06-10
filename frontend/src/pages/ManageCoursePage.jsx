@@ -257,6 +257,13 @@ export default function ManageCoursePage() {
                     <RefreshCw size={14} />
                   </Button>
                   <Button
+                    variant="secondary" size="md"
+                    onClick={() => navigate(`/learn/${courseId}`)}
+                    title="Preview your course lectures"
+                  >
+                    <Eye size={15} /> Preview
+                  </Button>
+                  <Button
                     variant={course.isPublished ? 'secondary' : 'primary'} size="md"
                     onClick={handlePublishToggle}
                   >
