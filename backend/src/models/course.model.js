@@ -98,6 +98,17 @@ const courseSchema = new Schema(
       type: Boolean,
       default: false, 
     },
+
+    // NEW: Daily AI quiz generation limit tracking (per course)
+    aiQuizGenerationsToday: {
+      type: Number,
+      default: 0,
+    },
+
+    aiQuizGenerationsDate: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -4,6 +4,9 @@ import {
   getQuizByLecture,
   regenerateQuiz,
   deleteQuiz,
+  createManualQuiz,
+  updateManualQuiz,
+  getAiQuota,
 } from "../controllers/quiz.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
 import optionalAuth from "../middlewares/optionalAuth.middleware.js";
@@ -26,6 +29,29 @@ router.post(
   isInstructor,
   regenerateQuiz
 );
+
+// NEW: manual quiz creation / edit — no AI, no daily limit
+router.post(
+  "/manual/:lectureId",
+  verifyJWT,
+  isInstructor,
+  createManualQuiz
+);
+router.patch(
+  "/manual/:lectureId",
+  verifyJWT,
+  isInstructor,
+  updateManualQuiz
+);
+
+// NEW: check today's AI generation usage for a course
+router.get(
+  "/ai-quota/:courseId",
+  verifyJWT,
+  isInstructor,
+  getAiQuota
+);
+
 router.delete(
   "/:lectureId",
   verifyJWT,
