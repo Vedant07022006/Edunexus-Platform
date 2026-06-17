@@ -172,6 +172,7 @@ export const getCourseLectures = asyncHandler(async (req, res) => {
       isEnrolled: course.isFree ? true : isEnrolled,
       isInstructor,
       isFree: course.isFree,
+      isArchived: course.isArchived,
     }, "Lectures fetched successfully")
   );
 });

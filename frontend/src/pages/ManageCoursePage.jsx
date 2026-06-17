@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  getCourseById, publishCourse,
+  getCourseById, publishCourse, deleteCourse,
   getInstructorLectures, addLecture, deleteLecture,
   generateTranscript, generateQuiz, deleteTranscript, deleteQuiz,
 } from '../services/api.service';
@@ -13,6 +13,7 @@ import {
   BookOpen, Upload, Trash2, Plus, Eye, EyeOff,
   Brain, FileText, ArrowLeft, Film, CheckCircle2,
   AlertCircle, Loader2, Video, RefreshCw, Lock,
+  X, AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -32,6 +33,69 @@ const STATUS_LABEL = {
   failed:           '❌ Failed',
 };
 
+// ─── Delete Course Confirmation Modal ──────────────────────────────────────────
+function DeleteCourseModal({ course, onClose, onConfirm, deleting }) {
+  const hasStudents = (course.totalEnrollments || 0) > 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.75)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="rounded-2xl border border-white/10 w-full max-w-md p-6 shadow-2xl"
+        style={{ background: '#13131f' }}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle size={18} className="text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-white">Delete this course?</h3>
+            <p className="text-xs text-slate-500 mt-0.5 truncate max-w-xs">{course.title}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-2 text-sm text-slate-400 mb-5">
+          <p>This course will be removed from listings and search, and you won't be able to add new lectures to it.</p>
+          {hasStudents ? (
+            <p className="text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-xs">
+              {course.totalEnrollments} enrolled student{course.totalEnrollments !== 1 ? 's' : ''} will keep full access to all
+              lectures and quizzes. They will see a notice that this course has been discontinued.
+            </p>
+          ) : (
+            <p className="text-slate-500 text-xs">This course currently has no enrolled students.</p>
+          )}
+          <p className="text-xs text-slate-500">
+            This is reversible — you can restore the course anytime from your dashboard's Archived Courses section.
+          </p>
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={deleting}>Cancel</Button>
+          <Button
+            variant="danger"
+            size="sm"
+            loading={deleting}
+            onClick={onConfirm}
+          >
+            <Trash2 size={13} /> Delete Course
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function ManageCoursePage() {
   const { courseId } = useParams();
   const navigate     = useNavigate();
@@ -49,6 +113,10 @@ export default function ManageCoursePage() {
 
   // Per-lecture action state
   const [actionState, setActionState] = useState({});
+
+  // Delete course confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingCourse, setDeletingCourse]    = useState(false);
 
   // ── Load / Refresh ──────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -78,6 +146,21 @@ export default function ManageCoursePage() {
       toast.success(data.message);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Publish failed');
+    }
+  };
+
+  // ── Delete course (soft-delete / archive) ──────────────────────────────────
+  const handleDeleteCourse = async () => {
+    setDeletingCourse(true);
+    try {
+      await deleteCourse(courseId);
+      toast.success('Course deleted. Enrolled students keep access; you can restore it anytime.');
+      navigate('/instructor');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete course');
+    } finally {
+      setDeletingCourse(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -268,6 +351,13 @@ export default function ManageCoursePage() {
                     onClick={handlePublishToggle}
                   >
                     {course.isPublished ? <><EyeOff size={15} /> Unpublish</> : <><Eye size={15} /> Publish</>}
+                  </Button>
+                  <Button
+                    variant="danger" size="md"
+                    onClick={() => setShowDeleteModal(true)}
+                    title="Delete this course"
+                  >
+                    <Trash2 size={15} /> Delete
                   </Button>
                 </div>
               </div>
@@ -476,6 +566,18 @@ export default function ManageCoursePage() {
           </>
         )}
       </div>
+
+      {/* Delete Course Modal */}
+      <AnimatePresence>
+        {showDeleteModal && course && (
+          <DeleteCourseModal
+            course={course}
+            deleting={deletingCourse}
+            onClose={() => setShowDeleteModal(false)}
+            onConfirm={handleDeleteCourse}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

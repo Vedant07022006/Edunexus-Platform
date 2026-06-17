@@ -8,6 +8,7 @@ import {
   getAllCourses,
   getCourseById,
   getMyCourses,
+  getMyArchivedCourses,
   searchCourses,
   getCoursesByCategory,
 } from "../controllers/course.controller.js";
@@ -26,6 +27,7 @@ router.get("/category/:category", getCoursesByCategory);
 // ── INSTRUCTOR ROUTES — static paths MUST come before /:courseId ──────────
 // /my/courses must be before /:courseId or Express treats "my" as a courseId
 router.get("/my/courses", verifyJWT, isInstructor, getMyCourses);
+router.get("/my/archived", verifyJWT, isInstructor, getMyArchivedCourses);
 
 router.post("/", verifyJWT, isInstructor, uploadThumbnail, createCourse);
 router.patch("/:courseId/publish", verifyJWT, isInstructor, publishCourse);
@@ -38,4 +40,4 @@ router.delete("/:courseId", verifyJWT, isInstructor, deleteCourse);
 // every unpublished course, breaking ManageCoursePage completely.
 router.get("/:courseId", optionalAuth, getCourseById);
 
-export default router;
+export default router;

@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getMyCourses, getCourseEnrollments } from '../services/api.service';
+import { getMyCourses, getMyArchivedCourses, restoreCourse, getCourseEnrollments } from '../services/api.service';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import {
   BookOpen, Users, Plus, Eye, Settings,
   CheckCircle, Clock, ArrowRight, TrendingUp,
   X, Mail, Calendar, BarChart2, ChevronRight,
-  GraduationCap, Video,
+  GraduationCap, Video, Archive, RotateCcw, ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -257,12 +257,36 @@ export default function InstructorDashboard() {
   const [loading, setLoading]           = useState(true);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
+  const [archivedCourses, setArchivedCourses] = useState([]);
+  const [archivedLoading, setArchivedLoading] = useState(true);
+  const [showArchived, setShowArchived]       = useState(false);
+  const [restoringId, setRestoringId]         = useState(null);
+
   useEffect(() => {
     getMyCourses()
       .then(({ data }) => setCourses(data.data.courses))
       .catch(() => toast.error('Failed to load courses'))
       .finally(() => setLoading(false));
+
+    getMyArchivedCourses()
+      .then(({ data }) => setArchivedCourses(data.data.courses))
+      .catch(() => {}) // non-critical — fail silently, archived section just stays empty
+      .finally(() => setArchivedLoading(false));
   }, []);
+
+  const handleRestore = async (courseId) => {
+    setRestoringId(courseId);
+    try {
+      const { data } = await restoreCourse(courseId);
+      toast.success('Course restored successfully');
+      setArchivedCourses((prev) => prev.filter((c) => c._id !== courseId));
+      setCourses((prev) => [data.data, ...prev]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to restore course');
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const totalStudents = courses.reduce((s, c) => s + c.totalEnrollments, 0);
   const published     = courses.filter((c) => c.isPublished).length;
@@ -413,6 +437,71 @@ export default function InstructorDashboard() {
           </div>
         )}
       </div>
+
+      {/* ── Archived Courses Section ── */}
+      {!archivedLoading && archivedCourses.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            className="w-full flex items-center justify-between p-4 glass rounded-2xl border border-white/[0.06] hover:border-white/10 transition-all"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-300">
+              <Archive size={15} className="text-slate-500" />
+              Archived Courses
+              <span className="text-xs bg-white/5 text-slate-500 px-2 py-0.5 rounded-full">{archivedCourses.length}</span>
+            </span>
+            <ChevronDown size={16} className={`text-slate-400 transition-transform ${showArchived ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showArchived && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-3 mt-3">
+                  {archivedCourses.map((course) => (
+                    <div
+                      key={course._id}
+                      className="glass rounded-2xl p-4 border border-white/[0.06] flex items-center gap-4 opacity-75"
+                    >
+                      <div className="w-16 h-12 rounded-xl overflow-hidden bg-surface-3 flex-shrink-0 grayscale">
+                        {course.thumbnail?.url
+                          ? <img src={course.thumbnail.url} alt={course.title} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center"><BookOpen size={16} className="text-slate-600" /></div>
+                        }
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-slate-300 text-sm truncate">{course.title}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                          <span className="flex items-center gap-1"><BookOpen size={11} />{course.totalLectures} lectures</span>
+                          <span className="flex items-center gap-1"><Users size={11} />{course.totalEnrollments} enrolled students keep access</span>
+                        </div>
+                      </div>
+
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-slate-500/20 text-slate-400 flex-shrink-0">
+                        Discontinued
+                      </span>
+
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        loading={restoringId === course._id}
+                        onClick={() => handleRestore(course._id)}
+                      >
+                        <RotateCcw size={13} /> Restore
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Student List Modal */}
       <AnimatePresence>

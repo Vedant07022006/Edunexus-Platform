@@ -20,6 +20,7 @@ export const getCourseById        = (id)        => api.get(`/courses/${id}`);
 export const searchCourses        = (q)         => api.get('/courses/search', { params: { q } });
 export const getCoursesByCategory = (cat)       => api.get(`/courses/category/${cat}`);
 export const getMyCourses         = ()          => api.get('/courses/my/courses');
+export const getMyArchivedCourses = ()          => api.get('/courses/my/archived');
 export const createCourse         = (data)      => api.post('/courses', data, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const updateCourse         = (id, data)  => api.patch(`/courses/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const deleteCourse         = (id)        => api.delete(`/courses/${id}`);
