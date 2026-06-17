@@ -436,6 +436,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import { Course } from "../models/course.model.js";
 import { User } from "../models/user.model.js";
 import { Enrollment } from "../models/enrollment.model.js";
+import { Lecture } from "../models/lecture.model.js";
 import { uploadThumbnailOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
@@ -677,8 +678,50 @@ export const getMyCourses = asyncHandler(async (req, res) => {
     .select("-__v")
     .sort({ createdAt: -1 });
 
+  // BUGFIX: course.totalLectures is a manually-maintained counter that can
+  // drift out of sync (e.g. if a lecture is ever deleted directly in the DB
+  // instead of through the API). Always compute the live count from the
+  // Lecture collection so the dashboard never shows a stale number.
+  const liveCounts = await Lecture.aggregate([
+    { $match: { course: { $in: courses.map((c) => c._id) } } },
+    { $group: { _id: "$course", count: { $sum: 1 } } },
+  ]);
+  const countMap = new Map(liveCounts.map((c) => [c._id.toString(), c.count]));
+
+  const coursesWithLiveCount = courses.map((course) => {
+    const obj = course.toObject();
+    obj.totalLectures = countMap.get(course._id.toString()) || 0;
+    return obj;
+  });
+
   return res.status(200).json(
-    new ApiResponse(200, { courses, total: courses.length }, "Your courses fetched successfully")
+    new ApiResponse(200, { courses: coursesWithLiveCount, total: coursesWithLiveCount.length }, "Your courses fetched successfully")
+  );
+});
+
+
+// NEW: Instructor's archived (soft-deleted) courses, so they can review and
+// restore them from the dashboard instead of the data being invisible forever.
+export const getMyArchivedCourses = asyncHandler(async (req, res) => {
+  const courses = await Course.find({ instructor: req.user._id, isArchived: true })
+    .populate("instructor", "fullName email bio")
+    .select("-__v")
+    .sort({ updatedAt: -1 });
+
+  const liveCounts = await Lecture.aggregate([
+    { $match: { course: { $in: courses.map((c) => c._id) } } },
+    { $group: { _id: "$course", count: { $sum: 1 } } },
+  ]);
+  const countMap = new Map(liveCounts.map((c) => [c._id.toString(), c.count]));
+
+  const coursesWithLiveCount = courses.map((course) => {
+    const obj = course.toObject();
+    obj.totalLectures = countMap.get(course._id.toString()) || 0;
+    return obj;
+  });
+
+  return res.status(200).json(
+    new ApiResponse(200, { courses: coursesWithLiveCount, total: coursesWithLiveCount.length }, "Archived courses fetched successfully")
   );
 });
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { getCourseLectures, updateProgress, checkEnrollment } from '../../services/api.service';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck } from 'lucide-react';
+import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck, Archive } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QuizSection from '../quiz/QuizSection';
 
@@ -100,6 +100,7 @@ export default function LecturePlayer({ courseId }) {
   const lectures     = lecturesData?.lectures || [];
   const isEnrolled   = lecturesData?.isEnrolled;
   const isInstructor = lecturesData?.isInstructor;
+  const isArchived   = lecturesData?.isArchived;
 
   const progress = isEnrolled
     ? Math.round((completedIds.length / Math.max(lectures.length, 1)) * 100)
@@ -128,6 +129,16 @@ export default function LecturePlayer({ courseId }) {
                           px-3 py-1.5 rounded-full">
             <ShieldCheck size={13} />
             Course Owner — Preview Mode
+          </div>
+        )}
+
+        {/* Discontinued badge — shown to enrolled students when instructor has deleted the course */}
+        {!isInstructor && isArchived && (
+          <div className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium
+                          bg-slate-500/10 border border-slate-500/20 text-slate-400
+                          px-3 py-1.5 rounded-full">
+            <Archive size={13} />
+            This course has been discontinued by the instructor — you keep full access
           </div>
         )}
 
