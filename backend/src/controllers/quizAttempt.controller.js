@@ -7,6 +7,123 @@ import { Enrollment } from "../models/enrollment.model.js";
 import { Lecture } from "../models/lecture.model.js";
 import mongoose from "mongoose";
 
+const MAX_ATTEMPTS   = 3;
+const COOLDOWN_HOURS = 24;
+
+
+// Checks whether a student is currently allowed to start a new quiz
+// attempt: enrolled -> video completed -> quiz exists -> under attempt
+// limit -> not in cooldown. Used by LecturePlayer to lock/unlock the quiz.
+export const checkEligibility = asyncHandler(async (req, res) => {
+  if (!req.user) throw new ApiError(401, "Login required");
+
+  const { lectureId } = req.params;
+
+  const lecture = await Lecture.findById(lectureId).populate("course");
+  if (!lecture) throw new ApiError(404, "Lecture not found");
+
+  const course = lecture.course;
+  if (!course) throw new ApiError(404, "Course not found");
+
+  if (!course.isFree && !lecture.isFree) {
+    const enrollment = await Enrollment.findOne({
+      user: req.user._id,
+      course: course._id,
+      isActive: true,
+    });
+
+    if (!enrollment) {
+      return res.status(200).json(
+        new ApiResponse(200, {
+          eligible: false,
+          reason: "not_enrolled",
+          message: "Please enroll in this course to attempt the quiz",
+        })
+      );
+    }
+
+    const isVideoCompleted = enrollment.completedLectures?.some(
+      (id) => id.toString() === lectureId.toString()
+    );
+
+    if (!isVideoCompleted) {
+      return res.status(200).json(
+        new ApiResponse(200, {
+          eligible: false,
+          reason: "video_not_completed",
+          message: "Watch the full video before attempting the quiz",
+        })
+      );
+    }
+  }
+
+  const quiz = await Quiz.findOne({ lecture: lectureId, status: "ready" });
+  if (!quiz) {
+    return res.status(200).json(
+      new ApiResponse(200, {
+        eligible: false,
+        reason: "no_quiz",
+        message: "No quiz available for this lecture",
+      })
+    );
+  }
+
+  const attempts = await QuizAttempt.find({
+    user: req.user._id,
+    quiz: quiz._id,
+  }).sort({ createdAt: -1 });
+
+  const attemptCount = attempts.length;
+
+  if (attemptCount >= MAX_ATTEMPTS) {
+    return res.status(200).json(
+      new ApiResponse(200, {
+        eligible: false,
+        reason: "max_attempts_reached",
+        message: `You have used all ${MAX_ATTEMPTS} attempts`,
+        attemptCount,
+        maxAttempts: MAX_ATTEMPTS,
+        attemptsLeft: 0,
+      })
+    );
+  }
+
+  if (attemptCount > 0) {
+    const lastAttempt = attempts[0];
+    const hoursSinceLast =
+      (Date.now() - new Date(lastAttempt.createdAt).getTime()) / (1000 * 60 * 60);
+
+    if (hoursSinceLast < COOLDOWN_HOURS) {
+      const hoursLeft = Math.floor(COOLDOWN_HOURS - hoursSinceLast);
+      const minutesLeft = Math.ceil(((COOLDOWN_HOURS - hoursSinceLast) % 1) * 60);
+
+      return res.status(200).json(
+        new ApiResponse(200, {
+          eligible: false,
+          reason: "cooldown_active",
+          message: `Next attempt available in ${hoursLeft}h ${minutesLeft}m`,
+          hoursLeft,
+          minutesLeft,
+          attemptCount,
+          maxAttempts: MAX_ATTEMPTS,
+          attemptsLeft: MAX_ATTEMPTS - attemptCount,
+        })
+      );
+    }
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      eligible: true,
+      reason: null,
+      message: "You are eligible to attempt the quiz",
+      attemptCount,
+      maxAttempts: MAX_ATTEMPTS,
+      attemptsLeft: MAX_ATTEMPTS - attemptCount,
+    })
+  );
+});
+
 
 
 export const submitQuiz = asyncHandler(async (req, res) => {
@@ -43,6 +160,15 @@ export const submitQuiz = asyncHandler(async (req, res) => {
   if (!quiz) throw new ApiError(404, "Quiz not found");
 
   
+  const previousAttempts = await QuizAttempt.countDocuments({
+    user: req.user._id,
+    quiz: quiz._id,
+  });
+
+  if (previousAttempts >= MAX_ATTEMPTS) {
+    throw new ApiError(400, `Maximum ${MAX_ATTEMPTS} attempts reached`);
+  }
+
   const validQuestionIds = quiz.questions.map((q) => q._id.toString());
 
   const evaluatedAnswers = answers.map((answer) => {
@@ -69,11 +195,6 @@ export const submitQuiz = asyncHandler(async (req, res) => {
   const totalQuestions = evaluatedAnswers.length;
   const score = Math.round((totalCorrect / totalQuestions) * 100);
   const isPassed = score >= quiz.passingScore;
-
-  const previousAttempts = await QuizAttempt.countDocuments({
-    user: req.user._id,
-    quiz: quiz._id,
-  });
 
   await QuizAttempt.create({
     user: req.user._id,
@@ -246,4 +367,3 @@ export const getAttemptDetails = asyncHandler(async (req, res) => {
     })
   );
 });
-

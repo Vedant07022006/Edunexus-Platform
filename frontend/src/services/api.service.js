@@ -65,8 +65,12 @@ export const generateQuiz         = (lectureId, data) => api.post(`/quizzes/gene
 export const regenerateQuiz       = (lectureId, data) => api.post(`/quizzes/regenerate/${lectureId}`, data);
 export const getQuizByLecture     = (lectureId)       => api.get(`/quizzes/${lectureId}`);
 export const deleteQuiz           = (lectureId)       => api.delete(`/quizzes/${lectureId}`);
+export const createManualQuiz     = (lectureId, data) => api.post(`/quizzes/manual/${lectureId}`, data);
+export const updateManualQuiz     = (lectureId, data) => api.patch(`/quizzes/manual/${lectureId}`, data);
+export const getAiQuota           = (courseId)        => api.get(`/quizzes/ai-quota/${courseId}`);
 
 // Quiz Attempts
+export const checkQuizEligibility = (lectureId)       => api.get(`/quiz-attempts/eligibility/${lectureId}`);
 export const submitQuiz           = (lectureId, data) => api.post(`/quiz-attempts/submit/${lectureId}`, data);
 export const getMyAttempts        = (lectureId)       => api.get(`/quiz-attempts/my-attempts/${lectureId}`);
 export const getBestScore         = (lectureId)       => api.get(`/quiz-attempts/best-score/${lectureId}`);
