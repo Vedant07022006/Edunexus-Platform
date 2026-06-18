@@ -20,6 +20,8 @@ import CreateCoursePage     from './pages/CreateCoursePage';
 import ManageCoursePage     from './pages/ManageCoursePage';
 import StudentPurchasesPage from './pages/StudentPurchasesPage';   // NEW
 import InstructorRevenuePage from './pages/InstructorRevenuePage'; // NEW
+import QuizPage              from './pages/QuizPage';              // NEW
+import QuizResultPage        from './pages/QuizResultPage';        // NEW (placeholder this slice)
 
 export default function App() {
   return (
@@ -61,6 +63,12 @@ export default function App() {
           } />
           <Route path="/learn/:courseId" element={
             <ProtectedRoute><LearnPage /></ProtectedRoute>
+          } />
+          <Route path="/quiz/:lectureId" element={
+            <ProtectedRoute><QuizPage /></ProtectedRoute>
+          } />
+          <Route path="/quiz/:lectureId/result" element={
+            <ProtectedRoute><QuizResultPage /></ProtectedRoute>
           } />
           <Route path="/profile" element={
             <ProtectedRoute><ProfilePage /></ProtectedRoute>

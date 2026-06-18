@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getCourseLectures, updateProgress, checkEnrollment, checkQuizEligibility } from '../../services/api.service';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck, Archive, AlertCircle } from 'lucide-react';
+import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck, Archive, AlertCircle, PlayCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import QuizSection from '../quiz/QuizSection';
 
 const LS_KEY = (courseId) => `edunexus_last_lecture_${courseId}`;
 
@@ -16,6 +16,7 @@ const formatDuration = (seconds) => {
 
 export default function LecturePlayer({ courseId }) {
   const { user } = useAuth();
+  const navigate  = useNavigate();
 
   const [lecturesData, setLecturesData]   = useState(null);
   const [activeLecture, setActiveLecture] = useState(null);
@@ -204,6 +205,11 @@ export default function LecturePlayer({ courseId }) {
                 key={tab.id}
                 onClick={() => {
                   if (quizLocked) return;
+                  if (isQuizTab && !isInstructor) {
+                    // Eligible student — go straight to the dedicated quiz page
+                    navigate(`/quiz/${activeLecture._id}`);
+                    return;
+                  }
                   setActiveTab(tab.id);
                 }}
                 title={quizLocked ? quizStatus?.message : ''}
@@ -285,8 +291,44 @@ export default function LecturePlayer({ courseId }) {
             </div>
           )}
 
-          {activeTab === 'quiz' && activeLecture && (isInstructor || quizStatus?.eligible) && (
-            <QuizSection lectureId={activeLecture._id} />
+          {activeTab === 'quiz' && activeLecture && (
+            <div className="glass rounded-2xl p-8 border border-white/[0.06] text-center">
+              {isInstructor ? (
+                <>
+                  <BookOpen size={36} className="text-primary-400 mx-auto mb-3" />
+                  <h3 className="text-base font-semibold text-white mb-1">Quiz preview</h3>
+                  <p className="text-sm text-slate-400 mb-5">
+                    As the course owner, manage and preview this lecture's quiz from the course management page.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/quiz/${activeLecture._id}`)}
+                    className="gradient-primary text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:opacity-90 transition-opacity inline-flex items-center gap-2"
+                  >
+                    <PlayCircle size={15} /> Open Quiz Page
+                  </button>
+                </>
+              ) : quizStatus?.eligible ? (
+                <>
+                  <PlayCircle size={36} className="text-primary-400 mx-auto mb-3" />
+                  <h3 className="text-base font-semibold text-white mb-1">Ready to start your quiz</h3>
+                  <p className="text-sm text-slate-400 mb-5">
+                    20 questions · {quizStatus.attemptsLeft} attempt{quizStatus.attemptsLeft !== 1 ? 's' : ''} left · 20 minute timer
+                  </p>
+                  <button
+                    onClick={() => navigate(`/quiz/${activeLecture._id}`)}
+                    className="gradient-primary text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:opacity-90 transition-opacity inline-flex items-center gap-2"
+                  >
+                    <PlayCircle size={15} /> Start Quiz
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Lock size={36} className="text-slate-500 mx-auto mb-3" />
+                  <h3 className="text-base font-semibold text-white mb-1">Quiz locked</h3>
+                  <p className="text-sm text-slate-400">{quizStatus?.message || 'Checking eligibility...'}</p>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
