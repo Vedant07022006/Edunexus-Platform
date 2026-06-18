@@ -92,6 +92,13 @@ const quizSchema = new Schema(
       max: 100,
     },
 
+    // NEW: time limit in minutes for the dedicated quiz page timer.
+    timeLimit: {
+      type: Number,
+      default: 20,
+      min: 1,
+    },
+
     generatedByAi: {
       type: Boolean,
       default: true,

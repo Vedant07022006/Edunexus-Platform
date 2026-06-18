@@ -132,10 +132,20 @@ export const submitQuiz = asyncHandler(async (req, res) => {
   }
 
   const { lectureId } = req.params;
-  const { answers, timeTakenInSeconds } = req.body;
+  const {
+    answers,
+    timeTakenInSeconds,
+    isAutoSubmitted,
+    autoSubmitReason,
+    tabSwitchCount,
+    flaggedQuestions,
+  } = req.body;
 
-  if (!answers || !Array.isArray(answers) || answers.length === 0) {
-    throw new ApiError(400, "Answers are required");
+  // NOTE: an auto-submit (timer expiry or tab-switch limit) may legitimately
+  // have zero or partial answers, so we no longer reject an empty array —
+  // only reject if answers is missing or not an array at all.
+  if (!answers || !Array.isArray(answers)) {
+    throw new ApiError(400, "Answers must be provided as an array");
   }
 
   const lecture = await Lecture.findById(lectureId).populate("course");
@@ -192,9 +202,18 @@ export const submitQuiz = asyncHandler(async (req, res) => {
   });
 
   const totalCorrect = evaluatedAnswers.filter((a) => a.isCorrect).length;
-  const totalQuestions = evaluatedAnswers.length;
+  // Use the quiz's actual question count as the denominator, not just the
+  // number of answers submitted — an auto-submitted attempt may have fewer
+  // answers than questions, and those unanswered ones should count as wrong,
+  // not be excluded from the percentage calculation.
+  const totalQuestions = quiz.questions.length;
   const score = Math.round((totalCorrect / totalQuestions) * 100);
   const isPassed = score >= quiz.passingScore;
+
+  const validAutoSubmitReasons = ["timer_expired", "tab_switch_limit", "fullscreen_exit"];
+  const safeAutoSubmitReason = validAutoSubmitReasons.includes(autoSubmitReason)
+    ? autoSubmitReason
+    : null;
 
   await QuizAttempt.create({
     user: req.user._id,
@@ -208,6 +227,10 @@ export const submitQuiz = asyncHandler(async (req, res) => {
     isPassed,
     attemptNumber: previousAttempts + 1,
     timeTakenInSeconds: timeTakenInSeconds || 0,
+    isAutoSubmitted: !!isAutoSubmitted,
+    autoSubmitReason: isAutoSubmitted ? safeAutoSubmitReason : null,
+    tabSwitchCount: Number(tabSwitchCount) || 0,
+    flaggedQuestions: Array.isArray(flaggedQuestions) ? flaggedQuestions : [],
   });
 
   return res.status(201).json(
@@ -219,6 +242,7 @@ export const submitQuiz = asyncHandler(async (req, res) => {
       passingScore: quiz.passingScore,
       attemptNumber: previousAttempts + 1,
       answers: evaluatedAnswers,
+      isAutoSubmitted: !!isAutoSubmitted,
     })
   );
 });

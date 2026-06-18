@@ -77,6 +77,28 @@ const quizAttemptSchema = new Schema(
       type: Number,
       default: 0,
     },
+
+    // NEW: anti-cheat tracking, populated by the dedicated quiz page
+    tabSwitchCount: {
+      type: Number,
+      default: 0,
+    },
+
+    isAutoSubmitted: {
+      type: Boolean,
+      default: false,
+    },
+
+    autoSubmitReason: {
+      type: String,
+      enum: ["timer_expired", "tab_switch_limit", "fullscreen_exit", null],
+      default: null,
+    },
+
+    flaggedQuestions: {
+      type: [Schema.Types.ObjectId],
+      default: [],
+    },
   },
   { timestamps: true }
 );
