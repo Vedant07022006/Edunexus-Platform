@@ -5,6 +5,7 @@ import {
   getCourseById, publishCourse, deleteCourse,
   getInstructorLectures, addLecture, deleteLecture,
   generateTranscript, generateQuiz, deleteTranscript, deleteQuiz,
+  createManualQuiz, getAiQuota,
 } from '../services/api.service';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
@@ -13,7 +14,7 @@ import {
   BookOpen, Upload, Trash2, Plus, Eye, EyeOff,
   Brain, FileText, ArrowLeft, Film, CheckCircle2,
   AlertCircle, Loader2, Video, RefreshCw, Lock,
-  X, AlertTriangle,
+  X, AlertTriangle, PencilLine, Zap, CircleSlash,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -32,6 +33,259 @@ const STATUS_LABEL = {
   completed:        '✅ Complete',
   failed:           '❌ Failed',
 };
+
+const TOTAL_QUESTIONS = 20;
+const EASY_TARGET   = 5;
+const MEDIUM_TARGET = 10;
+const HARD_TARGET   = 5;
+
+const emptyQuestion = () => ({
+  questionText: '',
+  options: ['', '', '', ''],
+  correctAnswer: '',
+  explanation: '',
+  difficulty: 'easy',
+});
+
+// ─── Manual Quiz Modal ──────────────────────────────────────────────────────────
+function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved }) {
+  const [questions, setQuestions] = useState(
+    Array.from({ length: TOTAL_QUESTIONS }, emptyQuestion)
+  );
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const counts = questions.reduce(
+    (acc, q) => {
+      if (q.questionText.trim() && q.correctAnswer) acc[q.difficulty]++;
+      return acc;
+    },
+    { easy: 0, medium: 0, hard: 0 }
+  );
+
+  const filledCount = questions.filter(
+    (q) => q.questionText.trim() && q.options.every((o) => o.trim()) && q.correctAnswer
+  ).length;
+
+  const updateQuestion = (index, field, value) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => (i === index ? { ...q, [field]: value } : q))
+    );
+  };
+
+  const updateOption = (index, optIndex, value) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== index) return q;
+        const newOptions = [...q.options];
+        const oldValue = newOptions[optIndex];
+        newOptions[optIndex] = value;
+        const correctAnswer = q.correctAnswer === oldValue ? value : q.correctAnswer;
+        return { ...q, options: newOptions, correctAnswer };
+      })
+    );
+  };
+
+  const isComplete =
+    filledCount === TOTAL_QUESTIONS &&
+    counts.easy === EASY_TARGET &&
+    counts.medium === MEDIUM_TARGET &&
+    counts.hard === HARD_TARGET;
+
+  const handleSave = async () => {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.questionText.trim()) return toast.error(`Question ${i + 1}: text is required`);
+      if (q.options.some((o) => !o.trim())) return toast.error(`Question ${i + 1}: all 4 options are required`);
+      if (!q.correctAnswer) return toast.error(`Question ${i + 1}: select the correct answer`);
+    }
+
+    if (counts.easy !== EASY_TARGET || counts.medium !== MEDIUM_TARGET || counts.hard !== HARD_TARGET) {
+      return toast.error(
+        `Need exactly ${EASY_TARGET} easy, ${MEDIUM_TARGET} medium, ${HARD_TARGET} hard (currently ${counts.easy}/${counts.medium}/${counts.hard})`
+      );
+    }
+
+    setSaving(true);
+    try {
+      await createManualQuiz(lectureId, { questions, title: `Quiz for ${lectureTitle}` });
+      toast.success('Quiz created manually! ✅');
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save quiz');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const current = questions[activeIndex];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.75)' }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 20 }}
+        className="rounded-2xl border border-white/10 w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+        style={{ background: '#13131f' }}
+      >
+        {/* Header */}
+        <div className="p-5 border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
+          <div>
+            <h3 className="text-base font-bold text-white">Create Quiz Manually</h3>
+            <p className="text-xs text-slate-500 mt-0.5 truncate max-w-md">{lectureTitle}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Progress summary */}
+        <div className="px-5 py-3 border-b border-white/[0.06] flex-shrink-0 bg-white/[0.02]">
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="text-slate-400">{filledCount}/{TOTAL_QUESTIONS} questions filled</span>
+            <div className="flex gap-3">
+              <span className={counts.easy === EASY_TARGET ? 'text-emerald-400' : 'text-slate-400'}>
+                Easy: {counts.easy}/{EASY_TARGET} {counts.easy === EASY_TARGET && '✅'}
+              </span>
+              <span className={counts.medium === MEDIUM_TARGET ? 'text-emerald-400' : 'text-slate-400'}>
+                Medium: {counts.medium}/{MEDIUM_TARGET} {counts.medium === MEDIUM_TARGET && '✅'}
+              </span>
+              <span className={counts.hard === HARD_TARGET ? 'text-emerald-400' : 'text-slate-400'}>
+                Hard: {counts.hard}/{HARD_TARGET} {counts.hard === HARD_TARGET && '✅'}
+              </span>
+            </div>
+          </div>
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full gradient-primary rounded-full transition-all duration-300"
+              style={{ width: `${(filledCount / TOTAL_QUESTIONS) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Body: question nav + form */}
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* Question number grid */}
+          <div className="w-40 border-r border-white/[0.06] p-3 overflow-y-auto flex-shrink-0">
+            <div className="grid grid-cols-4 gap-1.5">
+              {questions.map((q, i) => {
+                const isFilled = q.questionText.trim() && q.options.every((o) => o.trim()) && q.correctAnswer;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIndex(i)}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
+                      activeIndex === i
+                        ? 'gradient-primary text-white'
+                        : isFilled
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-white/5 text-slate-500 border border-white/10'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Question form */}
+          <div className="flex-1 p-5 overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-white">Question {activeIndex + 1}</p>
+              <select
+                value={current.difficulty}
+                onChange={(e) => updateQuestion(activeIndex, 'difficulty', e.target.value)}
+                className="text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300"
+                style={{ background: '#1a1d2e' }}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+
+            <textarea
+              value={current.questionText}
+              onChange={(e) => updateQuestion(activeIndex, 'questionText', e.target.value)}
+              placeholder="Enter question text..."
+              rows={2}
+              className="w-full px-3 py-2.5 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none"
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {current.options.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name={`correct-${activeIndex}`}
+                    checked={current.correctAnswer === opt && opt.trim() !== ''}
+                    onChange={() => updateQuestion(activeIndex, 'correctAnswer', opt)}
+                    disabled={!opt.trim()}
+                    className="w-4 h-4 accent-emerald-500 flex-shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={opt}
+                    onChange={(e) => updateOption(activeIndex, i, e.target.value)}
+                    placeholder={`Option ${i + 1}`}
+                    className="flex-1 px-3 py-2 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500">Select the radio button next to the correct option</p>
+
+            <textarea
+              value={current.explanation}
+              onChange={(e) => updateQuestion(activeIndex, 'explanation', e.target.value)}
+              placeholder="Short explanation for the correct answer..."
+              rows={2}
+              className="w-full px-3 py-2.5 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none"
+            />
+
+            <div className="flex justify-between pt-2">
+              <Button
+                variant="secondary" size="sm"
+                disabled={activeIndex === 0}
+                onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="secondary" size="sm"
+                disabled={activeIndex === TOTAL_QUESTIONS - 1}
+                onClick={() => setActiveIndex((i) => Math.min(TOTAL_QUESTIONS - 1, i + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-white/[0.06] flex items-center justify-between flex-shrink-0">
+          <p className="text-xs text-slate-500">
+            {isComplete ? '✅ All questions complete — ready to save' : 'Fill all 20 questions to save'}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" disabled={!isComplete || saving} loading={saving} onClick={handleSave}>
+              Save Quiz
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 // ─── Delete Course Confirmation Modal ──────────────────────────────────────────
 function DeleteCourseModal({ course, onClose, onConfirm, deleting }) {
@@ -118,15 +372,23 @@ export default function ManageCoursePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingCourse, setDeletingCourse]    = useState(false);
 
+  // AI quota for this course
+  const [aiQuota, setAiQuota] = useState(null); // { used, limit, remaining }
+
+  // Manual quiz modal target lecture
+  const [manualQuizLecture, setManualQuizLecture] = useState(null);
+
   // ── Load / Refresh ──────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
-      const [cRes, lRes] = await Promise.all([
+      const [cRes, lRes, qRes] = await Promise.all([
         getCourseById(courseId),
         getInstructorLectures(courseId),
+        getAiQuota(courseId).catch(() => null),
       ]);
       setCourse(cRes.data.data);
       setLectures((lRes.data.data.lectures || []).sort((a, b) => a.order - b.order));
+      if (qRes) setAiQuota(qRes.data.data);
       setLoadError('');
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to load course';
@@ -233,19 +495,26 @@ export default function ManageCoursePage() {
     }
   };
 
-  // ── Generate Quiz ───────────────────────────────────────────────────────────
+  // ── Generate Quiz (AI) ───────────────────────────────────────────────────────
   const handleQuiz = async (lectureId) => {
+    if (aiQuota && aiQuota.remaining <= 0) {
+      toast.error('Daily AI quiz limit reached for this course. Add the quiz manually instead.');
+      return;
+    }
+
     setActionState(p => ({ ...p, [`q_${lectureId}`]: 'quizzing' }));
 
-    const tid = toast.loading('Generating quiz with AI...');
+    const tid = toast.loading('Generating quiz with AI... (20 questions)');
     try {
-      await generateQuiz(lectureId, { totalQuestions: 5 });
+      const { data } = await generateQuiz(lectureId, {});
       toast.dismiss(tid);
       toast.success('Quiz generated! ✅');
+      if (data?.data?.aiQuota) setAiQuota(data.data.aiQuota);
       await loadData();
     } catch (err) {
       toast.dismiss(tid);
       toast.error(err.response?.data?.message || 'Quiz generation failed');
+      if (err.response?.status === 429) await loadData(); // refresh quota display
     } finally {
       setActionState(p => ({ ...p, [`q_${lectureId}`]: null }));
     }
@@ -370,21 +639,39 @@ export default function ManageCoursePage() {
               )}
             </motion.div>
 
-            {/* ── Pipeline Info ── */}
+            {/* ── Pipeline Info + AI Quota ── */}
             <motion.div
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
               className="mb-4 p-4 bg-primary-500/10 border border-primary-500/20 rounded-xl"
             >
-              <p className="text-xs text-primary-300 font-medium mb-1">🤖 AI Content Pipeline</p>
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                <p className="text-xs text-primary-300 font-medium">🤖 AI Content Pipeline</p>
+                {aiQuota && (
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 ${
+                    aiQuota.remaining > 0
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {aiQuota.remaining > 0 ? <Zap size={11} /> : <CircleSlash size={11} />}
+                    {aiQuota.used}/{aiQuota.limit} AI quizzes used today
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
                 <span className="flex items-center gap-1"><Upload size={11} /> Upload</span>
                 <span className="text-slate-600">→</span>
                 <span className="flex items-center gap-1"><FileText size={11} /> Transcript</span>
                 <span className="text-slate-600">→</span>
-                <span className="flex items-center gap-1"><Brain size={11} /> Quiz</span>
+                <span className="flex items-center gap-1"><Brain size={11} /> Quiz (20 Q: 5 easy / 10 medium / 5 hard)</span>
                 <span className="text-slate-600">→</span>
                 <span className="flex items-center gap-1 text-emerald-400"><CheckCircle2 size={11} /> Done</span>
               </div>
+              {aiQuota && aiQuota.remaining <= 0 && (
+                <p className="mt-2 text-xs text-yellow-300 flex items-center gap-1.5">
+                  <AlertCircle size={12} />
+                  Daily AI limit reached for this course. Use "Add Manually" on any lecture, or wait 24h.
+                </p>
+              )}
             </motion.div>
 
             {/* ── Lectures ── */}
@@ -477,6 +764,7 @@ export default function ManageCoursePage() {
                   const quizBusy = actionState[`q_${lec._id}`] === 'quizzing';
                   const hasTranscript = ['generating_quiz', 'completed'].includes(lec.processingStatus);
                   const isComplete = lec.processingStatus === 'completed';
+                  const aiLimitReached = aiQuota && aiQuota.remaining <= 0;
 
                   return (
                     <motion.div key={lec._id}
@@ -523,25 +811,44 @@ export default function ManageCoursePage() {
                             {busy ? 'Working...' : 'Transcript'}
                           </button>
 
-                          {/* Quiz button */}
+                          {/* AI Quiz button */}
                           <button
-                            onClick={() => hasTranscript && !isComplete && !quizBusy && handleQuiz(lec._id)}
-                            disabled={!hasTranscript || isComplete || quizBusy}
-                            title={!hasTranscript ? 'Generate transcript first' : isComplete ? 'Quiz done' : 'Generate Quiz (Step 2)'}
+                            onClick={() => hasTranscript && !isComplete && !quizBusy && !aiLimitReached && handleQuiz(lec._id)}
+                            disabled={!hasTranscript || isComplete || quizBusy || aiLimitReached}
+                            title={
+                              !hasTranscript ? 'Generate transcript first'
+                              : isComplete ? 'Quiz done'
+                              : aiLimitReached ? 'Daily AI limit reached — add manually instead'
+                              : 'Generate Quiz with AI (Step 2)'
+                            }
                             className={`flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border ${
                               !hasTranscript
                                 ? 'text-slate-600 border-white/5 cursor-not-allowed opacity-40'
                                 : isComplete
                                   ? 'text-emerald-400 border-emerald-500/20 cursor-default opacity-70'
-                                  : 'text-slate-300 hover:text-purple-400 border-white/10 hover:border-purple-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
+                                  : aiLimitReached
+                                    ? 'text-slate-600 border-white/5 cursor-not-allowed opacity-40'
+                                    : 'text-slate-300 hover:text-purple-400 border-white/10 hover:border-purple-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
                             }`}
                           >
                             {quizBusy ? <Loader2 size={12} className="animate-spin" />
                               : !hasTranscript ? <Lock size={12} />
                               : isComplete ? <CheckCircle2 size={12} />
+                              : aiLimitReached ? <CircleSlash size={12} />
                               : <Brain size={12} />}
-                            {quizBusy ? 'Working...' : 'Quiz'}
+                            {quizBusy ? 'Working...' : 'AI Quiz'}
                           </button>
+
+                          {/* Add Manually button — shown whenever quiz isn't done yet */}
+                          {!isComplete && (
+                            <button
+                              onClick={() => setManualQuizLecture(lec)}
+                              title="Create quiz manually (20 questions)"
+                              className="flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border text-slate-300 hover:text-blue-400 border-white/10 hover:border-blue-500/40"
+                            >
+                              <PencilLine size={12} /> Add Manually
+                            </button>
+                          )}
 
                           {/* Retry */}
                           {lec.processingStatus === 'failed' && (
@@ -575,6 +882,18 @@ export default function ManageCoursePage() {
             deleting={deletingCourse}
             onClose={() => setShowDeleteModal(false)}
             onConfirm={handleDeleteCourse}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Manual Quiz Modal */}
+      <AnimatePresence>
+        {manualQuizLecture && (
+          <ManualQuizModal
+            lectureId={manualQuizLecture._id}
+            lectureTitle={manualQuizLecture.title}
+            onClose={() => setManualQuizLecture(null)}
+            onSaved={loadData}
           />
         )}
       </AnimatePresence>

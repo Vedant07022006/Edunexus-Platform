@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { getCourseLectures, updateProgress, checkEnrollment } from '../../services/api.service';
+import { getCourseLectures, updateProgress, checkEnrollment, checkQuizEligibility } from '../../services/api.service';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck, Archive } from 'lucide-react';
+import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck, Archive, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QuizSection from '../quiz/QuizSection';
 
@@ -23,6 +23,7 @@ export default function LecturePlayer({ courseId }) {
   const [activeTab, setActiveTab]         = useState('overview');
   const [loading, setLoading]             = useState(true);
   const [videoError, setVideoError]       = useState(false);
+  const [quizStatus, setQuizStatus]       = useState(null);
 
   const markedRef = useRef(new Set());
   const videoRef  = useRef(null);
@@ -84,10 +85,25 @@ export default function LecturePlayer({ courseId }) {
     }
   }, [activeLecture, courseId]);
 
+  // Check quiz eligibility whenever the active lecture changes.
+  // NOTE: uses lecturesData?.isInstructor (not the bare isInstructor variable,
+  // which is only declared later after the loading guard below) to avoid a
+  // "Cannot access before initialization" ReferenceError.
+  useEffect(() => {
+    if (!activeLecture || !user) return;
+    if (lecturesData?.isInstructor) return; // instructors always have full access
+
+    setQuizStatus(null);
+    checkQuizEligibility(activeLecture._id)
+      .then(({ data }) => setQuizStatus(data.data))
+      .catch(() => setQuizStatus(null));
+  }, [activeLecture?._id, user, lecturesData?.isInstructor]);
+
   const switchLecture = (lecture) => {
     setActiveLecture(lecture);
     setActiveTab('overview');
     setVideoError(false);
+    setQuizStatus(null);
     localStorage.setItem(LS_KEY(courseId), lecture._id);
   };
 
@@ -179,20 +195,58 @@ export default function LecturePlayer({ courseId }) {
 
         {/* Tabs */}
         <div className="mt-4 flex gap-1 glass rounded-xl p-1 w-fit">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-primary-600 text-white'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const isQuizTab  = tab.id === 'quiz';
+            const quizLocked = isQuizTab && !isInstructor && quizStatus && !quizStatus.eligible;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (quizLocked) return;
+                  setActiveTab(tab.id);
+                }}
+                title={quizLocked ? quizStatus?.message : ''}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  activeTab === tab.id
+                    ? 'bg-primary-600 text-white'
+                    : quizLocked
+                    ? 'text-slate-600 cursor-not-allowed opacity-50'
+                    : 'text-slate-400 hover:text-white cursor-pointer'
+                }`}
+              >
+                {isQuizTab && quizLocked && <Lock size={11} />}
+                {tab.label}
+                {isQuizTab && quizStatus?.eligible && (
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full">
+                    {quizStatus.attemptsLeft} left
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Quiz lock reason shown below tabs */}
+        {!isInstructor && quizStatus && !quizStatus.eligible && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <AlertCircle
+              size={12}
+              className={
+                quizStatus.reason === 'video_not_completed'
+                  ? 'text-yellow-500'
+                  : 'text-slate-500'
+              }
+            />
+            <span className={
+              quizStatus.reason === 'video_not_completed'
+                ? 'text-yellow-400'
+                : 'text-slate-500'
+            }>
+              {quizStatus.message}
+            </span>
+          </div>
+        )}
 
         {/* Tab Content */}
         <div className="mt-4">
@@ -231,7 +285,7 @@ export default function LecturePlayer({ courseId }) {
             </div>
           )}
 
-          {activeTab === 'quiz' && activeLecture && (
+          {activeTab === 'quiz' && activeLecture && (isInstructor || quizStatus?.eligible) && (
             <QuizSection lectureId={activeLecture._id} />
           )}
         </div>

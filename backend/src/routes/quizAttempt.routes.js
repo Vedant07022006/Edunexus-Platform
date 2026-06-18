@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  checkEligibility,
   submitQuiz,
   getMyAttempts,
   getBestScore,
@@ -14,6 +15,12 @@ const router = Router();
 
 // STUDENT ROUTES
 
+router.get(
+  "/eligibility/:lectureId",
+  verifyJWT,
+  isStudent,
+  checkEligibility
+);
 router.post(
   "/submit/:lectureId",
   verifyJWT,
