@@ -215,7 +215,7 @@ export const submitQuiz = asyncHandler(async (req, res) => {
     ? autoSubmitReason
     : null;
 
-  await QuizAttempt.create({
+  const createdAttempt = await QuizAttempt.create({
     user: req.user._id,
     quiz: quiz._id,
     lecture: lectureId,
@@ -235,6 +235,7 @@ export const submitQuiz = asyncHandler(async (req, res) => {
 
   return res.status(201).json(
     new ApiResponse(201, {
+      attemptId: createdAttempt._id,
       score,
       totalCorrect,
       totalQuestions,
@@ -370,17 +371,23 @@ export const getAttemptDetails = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Not authorized");
   }
 
-  const detailedAnswers = attempt.answers.map((answer) => {
-    const question = attempt.quiz.questions.find(
-      (q) => q._id.toString() === answer.question.toString()
+  // Build the full breakdown in question order, including questions the
+  // student left unanswered (e.g. from an auto-submit) — these still need
+  // to show the correct answer and explanation, just with no selected answer.
+  const detailedAnswers = attempt.quiz.questions.map((question) => {
+    const answer = attempt.answers.find(
+      (a) => a.question.toString() === question._id.toString()
     );
 
     return {
-      question: question ? question.questionText : "Not found",
-      selectedAnswer: answer.selectedAnswer,
-      correctAnswer: question ? question.correctAnswer : null,
-      explanation: question ? question.explanation : null,
-      isCorrect: answer.isCorrect,
+      questionId: question._id,
+      question: question.questionText,
+      difficulty: question.difficulty,
+      options: question.options,
+      selectedAnswer: answer ? answer.selectedAnswer : null,
+      correctAnswer: question.correctAnswer,
+      explanation: question.explanation || null,
+      isCorrect: answer ? answer.isCorrect : false,
     };
   });
 
@@ -388,6 +395,7 @@ export const getAttemptDetails = asyncHandler(async (req, res) => {
     new ApiResponse(200, {
       ...attempt.toObject(),
       detailedAnswers,
+      maxAttempts: MAX_ATTEMPTS,
     })
   );
 });
