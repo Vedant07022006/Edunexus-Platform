@@ -76,3 +76,7 @@ export const getMyAttempts        = (lectureId)       => api.get(`/quiz-attempts
 export const getBestScore         = (lectureId)       => api.get(`/quiz-attempts/best-score/${lectureId}`);
 export const getLeaderboard       = (courseId)        => api.get(`/quiz-attempts/leaderboard/${courseId}`);
 export const getAttemptDetails    = (attemptId)       => api.get(`/quiz-attempts/attempt/${attemptId}`);
+
+// Chatbot
+export const askChatbot        = (data) => api.post('/chatbot/ask', data);
+export const getChatbotUsage   = ()     => api.get('/chatbot/usage');

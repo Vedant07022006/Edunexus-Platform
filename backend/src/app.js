@@ -14,6 +14,7 @@ import enrollmentRouter from "./routes/enrollment.routes.js";
 import paymentRouter from "./routes/payment.routes.js";
 import quizAttemptRouter from "./routes/quizAttempt.routes.js";
 import revenueRouter from "./routes/revenue.routes.js";
+import chatbotRouter from "./routes/chatbot.routes.js"; // NEW
 
 import "./models/user.model.js";
 import "./models/course.model.js";
@@ -82,6 +83,7 @@ app.use("/api/v1/enrollments",  enrollmentRouter);
 app.use("/api/v1/payments",     paymentRouter);
 app.use("/api/v1/quiz-attempts", quizAttemptRouter);
 app.use("/api/v1/revenue",      revenueRouter);  // NEW
+app.use("/api/v1/chatbot",      chatbotRouter);  // NEW
 
 app.use(errorHandler);
 
