@@ -5,7 +5,7 @@ import {
   getCourseById, publishCourse, deleteCourse,
   getInstructorLectures, addLecture, deleteLecture,
   generateTranscript, generateQuiz, deleteTranscript, deleteQuiz,
-  createManualQuiz, getAiQuota,
+  createManualQuiz, getAiQuota, getQuizByLecture, updateManualQuiz,
 } from '../services/api.service';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
@@ -48,10 +48,25 @@ const emptyQuestion = () => ({
 });
 
 // ─── Manual Quiz Modal ──────────────────────────────────────────────────────────
-function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved }) {
-  const [questions, setQuestions] = useState(
-    Array.from({ length: TOTAL_QUESTIONS }, emptyQuestion)
-  );
+function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQuestions = null }) {
+  // isEditMode = true when opened on a lecture that already has a quiz
+  const isEditMode = !!initialQuestions;
+
+  const [questions, setQuestions] = useState(() => {
+    if (initialQuestions && initialQuestions.length === TOTAL_QUESTIONS) {
+      // Pre-fill from existing quiz — normalize to the shape emptyQuestion() produces
+      return initialQuestions.map((q) => ({
+        questionText: q.questionText || '',
+        options: Array.isArray(q.options) && q.options.length === 4
+          ? q.options
+          : ['', '', '', ''],
+        correctAnswer: q.correctAnswer || '',
+        explanation: q.explanation || '',
+        difficulty: q.difficulty || 'easy',
+      }));
+    }
+    return Array.from({ length: TOTAL_QUESTIONS }, emptyQuestion);
+  });
   const [activeIndex, setActiveIndex] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -108,8 +123,13 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved }) {
 
     setSaving(true);
     try {
-      await createManualQuiz(lectureId, { questions, title: `Quiz for ${lectureTitle}` });
-      toast.success('Quiz created manually! ✅');
+      if (isEditMode) {
+        await updateManualQuiz(lectureId, { questions, title: `Quiz for ${lectureTitle}` });
+        toast.success('Quiz updated! ✅');
+      } else {
+        await createManualQuiz(lectureId, { questions, title: `Quiz for ${lectureTitle}` });
+        toast.success('Quiz created manually! ✅');
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -137,7 +157,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved }) {
         {/* Header */}
         <div className="p-5 border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
           <div>
-            <h3 className="text-base font-bold text-white">Create Quiz Manually</h3>
+            <h3 className="text-base font-bold text-white">{isEditMode ? 'Edit Quiz' : 'Create Quiz Manually'}</h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate max-w-md">{lectureTitle}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
@@ -378,6 +398,10 @@ export default function ManageCoursePage() {
   // Manual quiz modal target lecture
   const [manualQuizLecture, setManualQuizLecture] = useState(null);
 
+  // Edit quiz modal — stores { lecture, questions } when opened on a completed lecture
+  const [editQuizLecture, setEditQuizLecture] = useState(null);
+  const [loadingEditQuiz, setLoadingEditQuiz]  = useState(false);
+
   // ── Load / Refresh ──────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
@@ -517,6 +541,19 @@ export default function ManageCoursePage() {
       if (err.response?.status === 429) await loadData(); // refresh quota display
     } finally {
       setActionState(p => ({ ...p, [`q_${lectureId}`]: null }));
+    }
+  };
+
+  // ── Edit existing quiz ──────────────────────────────────────────────────────
+  const handleOpenEditQuiz = async (lec) => {
+    setLoadingEditQuiz(true);
+    try {
+      const { data } = await getQuizByLecture(lec._id);
+      setEditQuizLecture({ lecture: lec, questions: data.data.questions });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load quiz for editing');
+    } finally {
+      setLoadingEditQuiz(false);
     }
   };
 
@@ -850,6 +887,19 @@ export default function ManageCoursePage() {
                             </button>
                           )}
 
+                          {/* Edit Quiz button — shown when quiz is already complete */}
+                          {isComplete && (
+                            <button
+                              onClick={() => handleOpenEditQuiz(lec)}
+                              disabled={loadingEditQuiz}
+                              title="Edit existing quiz questions"
+                              className="flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border text-slate-300 hover:text-yellow-400 border-white/10 hover:border-yellow-500/40 disabled:opacity-50"
+                            >
+                              {loadingEditQuiz ? <Loader2 size={12} className="animate-spin" /> : <PencilLine size={12} />}
+                              Edit Quiz
+                            </button>
+                          )}
+
                           {/* Retry */}
                           {lec.processingStatus === 'failed' && (
                             <button onClick={() => handleTranscript(lec._id)} title="Retry"
@@ -886,13 +936,26 @@ export default function ManageCoursePage() {
         )}
       </AnimatePresence>
 
-      {/* Manual Quiz Modal */}
+      {/* Manual Quiz Modal — create from blank */}
       <AnimatePresence>
         {manualQuizLecture && (
           <ManualQuizModal
             lectureId={manualQuizLecture._id}
             lectureTitle={manualQuizLecture.title}
             onClose={() => setManualQuizLecture(null)}
+            onSaved={loadData}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Quiz Modal — pre-filled with existing quiz questions */}
+      <AnimatePresence>
+        {editQuizLecture && (
+          <ManualQuizModal
+            lectureId={editQuizLecture.lecture._id}
+            lectureTitle={editQuizLecture.lecture.title}
+            initialQuestions={editQuizLecture.questions}
+            onClose={() => setEditQuizLecture(null)}
             onSaved={loadData}
           />
         )}
