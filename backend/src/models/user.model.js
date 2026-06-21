@@ -109,6 +109,17 @@ const userSchema = new Schema(
       type: Date,
       default: null,
     },
+
+    // NEW: AI doubt chatbot daily usage tracking (50 messages/day)
+    dailyChatCount: {
+      type: Number,
+      default: 0,
+    },
+
+    lastChatDate: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getAttemptDetails, checkQuizEligibility } from '../services/api.service';
+import { useAuth } from '../context/AuthContext';
+import ChatbotWidget from '../components/ChatbotWidget';
 import {
   CheckCircle2, XCircle, Clock, RotateCcw,
-  AlertTriangle, Loader2, Info, ShieldAlert,
+  AlertTriangle, Loader2, Info, ShieldAlert, MessageCircle,
 } from 'lucide-react';
 
 export default function QuizResultPage() {
   const { lectureId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   // Comes from QuizPage's navigate() call right after submitting
   const submitResult = location.state?.result;
@@ -18,6 +21,8 @@ export default function QuizResultPage() {
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+
+  const [showChatbot, setShowChatbot] = useState(false);
 
   const [retryStatus, setRetryStatus] = useState(null); // eligibility result for Try Again
   const [checkingRetry, setCheckingRetry] = useState(false);
@@ -150,9 +155,29 @@ export default function QuizResultPage() {
               </p>
             </div>
           </div>
+
+          <button
+            onClick={() => setShowChatbot((v) => !v)}
+            className="mt-5 inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl
+                       bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:border-primary-500/40 transition-all"
+          >
+            <MessageCircle size={15} /> {showChatbot ? 'Hide Doubt Assistant' : 'Ask a Doubt'}
+          </button>
         </motion.div>
 
-        {/* Try again / attempts status */}
+        {/* AI Doubt Chatbot */}
+        {showChatbot && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+            className="mb-6 overflow-hidden"
+          >
+            <ChatbotWidget
+              lectureId={lectureId}
+              lectureTitle={attempt.quiz?.title?.replace(/^Quiz for /, '') || 'this lecture'}
+              currentUser={user}
+            />
+          </motion.div>
+        )}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="glass rounded-2xl border border-white/[0.06] p-5 mb-6 flex items-center justify-between flex-wrap gap-3"
