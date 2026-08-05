@@ -6,7 +6,7 @@
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
-import { User } from '../../src/models/user.model.js';
+import { User } from '../../src/modules/user/user.model.js';
 
 let _counter = 0;
 const uid = () => ++_counter;
