@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import process from 'node:process'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -8,7 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         timeout: 300000,       // 5 min — AssemblyAI transcription can take several minutes
         proxyTimeout: 300000,  // match the timeout for the proxy connection itself

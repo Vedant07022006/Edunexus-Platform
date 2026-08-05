@@ -1,4 +1,4 @@
-import { useParams } from 'react';
+import { useParams } from 'react-router-dom';
 import Navbar from '../../shared/components/Navbar';
 import LecturePlayer from '../components/LecturePlayer';
 

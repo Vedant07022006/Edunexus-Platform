@@ -1,0 +1,25 @@
+services:
+  # --- Backend Service ---
+  backend:
+    build: ./backend
+    container_name: edunexus-backend
+    ports:
+      - "8000:8000"
+    # Load all environment variables directly from your existing backend/.env
+    env_file:
+      - ./backend/.env
+    # Explicitly set PORT and CORS_ORIGIN for Docker networking
+    environment:
+      - PORT=8000
+      - CORS_ORIGIN=http://localhost:5173
+
+  # --- Frontend Service ---
+  frontend:
+    build: ./frontend
+    container_name: edunexus-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_PROXY_TARGET=http://backend:8000
+    depends_on:
+      - backend

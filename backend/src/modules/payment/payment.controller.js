@@ -385,9 +385,6 @@ export const refundPayment = asyncHandler(async (req, res) => {
   );
 });
 
-
-// ─── POST /api/v1/payments/bundle/create-order/:bundleId ──────────────────────
-
 export const createBundleOrder = asyncHandler(async (req, res) => {
   const { bundleId } = req.params;
 
@@ -397,7 +394,23 @@ export const createBundleOrder = asyncHandler(async (req, res) => {
 
   if (!bundle || !bundle.isPublished) throw new ApiError(404, "Bundle not found");
 
-  const amountInPaise = Math.round(bundle.price * 100);
+  const user = await User.findById(req.user._id).select("enrolledCourses");
+  const enrolledCourseIds = new Set(user.enrolledCourses.map(e => e.course.toString()));
+
+  const activeCourses = bundle.courses.filter(c => !c.isArchived);
+  if (activeCourses.length === 0) {
+    throw new ApiError(400, "This bundle does not contain any active courses");
+  }
+
+  const unownedCourses = activeCourses.filter(c => !enrolledCourseIds.has(c._id.toString()));
+
+  if (unownedCourses.length === 0) {
+    throw new ApiError(400, "You are already enrolled in all the courses in this bundle");
+  }
+
+  // Calculate dynamic price: Proportional discount based on unowned courses ratio
+  const finalPrice = Math.round((bundle.price * (unownedCourses.length / activeCourses.length)) * 100) / 100;
+  const amountInPaise = Math.round(finalPrice * 100);
 
   const razorpayOrder = await getRazorpay().orders.create({
     amount:   amountInPaise,
@@ -405,12 +418,12 @@ export const createBundleOrder = asyncHandler(async (req, res) => {
     receipt:  `bundle_${Date.now()}`,
   });
 
-  // Create one Payment doc for the bundle (per-course docs created on verify)
+  // Create one parent Payment doc for the bundle (per-course docs created on verify)
   const payment = await Payment.create({
     user:            req.user._id,
     bundle:          bundleId,
     razorpayOrderId: razorpayOrder.id,
-    amount:          bundle.price,
+    amount:          finalPrice,
     currency:        "INR",
     status:          "pending",
   });
@@ -423,10 +436,14 @@ export const createBundleOrder = asyncHandler(async (req, res) => {
       paymentId:  payment._id,
       keyId:      process.env.RAZORPAY_KEY_ID,
       bundleName: bundle.title,
-      bundlePrice: bundle.price,
+      bundlePrice: finalPrice,
+      originalPrice: bundle.price,
+      unownedCount: unownedCourses.length,
+      totalCount: activeCourses.length,
     }, "Bundle order created successfully")
   );
 });
+
 
 // ─── POST /api/v1/payments/bundle/verify ──────────────────────────────────────
 
@@ -469,16 +486,41 @@ export const verifyBundlePayment = asyncHandler(async (req, res) => {
       });
 
     if (bundle) {
-      for (const course of bundle.courses) {
-        if (course.isArchived) continue;
-        await enrollStudent(
-          payment.user,
-          course._id,
-          course.title,
-          req.user.email,
-          req.user.fullName,
-          course.instructor?._id
-        );
+      const user = await User.findById(payment.user).select("enrolledCourses");
+      const enrolledCourseIds = new Set(user.enrolledCourses.map(e => e.course.toString()));
+
+      const activeCourses = bundle.courses.filter(c => !c.isArchived);
+      const unownedCourses = activeCourses.filter(c => !enrolledCourseIds.has(c._id.toString()));
+
+      if (unownedCourses.length > 0) {
+        // Split the paid amount equally among the newly enrolled courses
+        const splitAmount = Math.round((payment.amount / unownedCourses.length) * 100) / 100;
+
+        for (const course of unownedCourses) {
+          // 1. Enroll the student
+          await enrollStudent(
+            payment.user,
+            course._id,
+            course.title,
+            req.user.email,
+            req.user.fullName,
+            course.instructor?._id
+          );
+
+          // 2. Create a completed Payment record for this specific course to credit instructor revenue stats
+          await Payment.create({
+            user:              payment.user,
+            course:            course._id,
+            razorpayOrderId:   payment.razorpayOrderId,
+            razorpayPaymentId: payment.razorpayPaymentId,
+            razorpaySignature: payment.razorpaySignature,
+            amount:            splitAmount,
+            currency:          payment.currency,
+            status:            "completed",
+            enrollmentCreated: true,
+            bundle:            payment.bundle,
+          });
+        }
       }
     }
 

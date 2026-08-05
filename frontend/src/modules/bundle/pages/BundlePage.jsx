@@ -30,6 +30,41 @@ export default function BundlesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const getEnrollmentInfo = (bundle) => {
+    if (!user || !user.enrolledCourses) {
+      return {
+        enrolledIds: new Set(),
+        ownedCount: 0,
+        totalCount: bundle.courses.length,
+        isFullyOwned: false,
+        isPartiallyOwned: false,
+        discountedPrice: bundle.price
+      };
+    }
+    const enrolledIds = new Set(user.enrolledCourses.map(e => (e.course?._id || e.course || "").toString()));
+    const activeCourses = bundle.courses.filter(c => !c.isArchived);
+    const owned = activeCourses.filter(c => enrolledIds.has(c._id.toString()));
+    
+    const ownedCount = owned.length;
+    const totalCount = activeCourses.length;
+    const isFullyOwned = totalCount > 0 && ownedCount === totalCount;
+    const isPartiallyOwned = ownedCount > 0 && ownedCount < totalCount;
+    
+    // Proportional price discount
+    const discountedPrice = totalCount > 0 
+      ? Math.round((bundle.price * ((totalCount - ownedCount) / totalCount)) * 100) / 100
+      : bundle.price;
+
+    return {
+      enrolledIds,
+      ownedCount,
+      totalCount,
+      isFullyOwned,
+      isPartiallyOwned,
+      discountedPrice
+    };
+  };
+
   const handleBuy = async (bundle) => {
     if (!user) return navigate('/login');
     setBuyingId(bundle._id);
@@ -38,14 +73,14 @@ export default function BundlesPage() {
       if (!loaded) { toast.error('Payment service unavailable'); return; }
 
       const { data } = await createBundleOrder(bundle._id);
-      const { orderId, amount, currency, keyId } = data.data;
+      const { orderId, amount, currency, keyId, bundlePrice } = data.data;
 
       const rzp = new window.Razorpay({
         key: keyId,
         amount: amount,
         currency,
         name: 'EduNexus',
-        description: bundle.title,
+        description: `${bundle.title} - Complete My Bundle`,
         order_id: orderId,
         handler: async (response) => {
           try {
@@ -54,7 +89,7 @@ export default function BundlesPage() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature:  response.razorpay_signature,
             });
-            toast.success('Bundle purchased! Enrolled in all courses.');
+            toast.success('Bundle purchased successfully!');
             navigate('/dashboard');
           } catch {
             toast.error('Payment verification failed. Contact support.');
@@ -86,29 +121,82 @@ export default function BundlesPage() {
           <p className="text-sm text-slate-500 text-center py-16">No bundles available yet.</p>
         ) : (
           <div className="grid sm:grid-cols-2 gap-5">
-            {bundles.map((b) => (
-              <div key={b._id} className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] p-5">
-                <h2 className="font-bold text-slate-900 dark:text-white mb-1">{b.title}</h2>
-                {b.description && <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{b.description}</p>}
-                <p className="text-xs text-slate-500 mb-4">{b.courses.length} courses included</p>
-                <div className="space-y-1 mb-4">
-                  {b.courses.map((c) => (
-                    <p key={c._id} className="text-xs text-slate-600 dark:text-slate-400">• {c.title}</p>
-                  ))}
+            {bundles.map((b) => {
+              const enrolledInfo = getEnrollmentInfo(b);
+              return (
+                <div key={b._id} className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] p-5 flex flex-col justify-between">
+                  <div>
+                    <h2 className="font-bold text-slate-900 dark:text-white mb-1">{b.title}</h2>
+                    {b.description && <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{b.description}</p>}
+                    <p className="text-xs text-slate-500 mb-4">{b.courses.length} courses included</p>
+                    
+                    <div className="space-y-2 mb-4">
+                      {b.courses.map((c) => {
+                        const isOwned = enrolledInfo.enrolledIds?.has(c._id.toString());
+                        return (
+                          <div key={c._id} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600 dark:text-slate-400">• {c.title}</span>
+                            {user && (
+                              isOwned ? (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-medium text-[10px]">
+                                  ✓ Owned
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 font-medium text-[10px]">
+                                  + Will Unlock
+                                </span>
+                              )
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    {user && enrolledInfo.isPartiallyOwned && (
+                      <p className="text-[11px] text-amber-500 font-medium mb-3">
+                        💡 Complete My Bundle: You already own {enrolledInfo.ownedCount} of {enrolledInfo.totalCount} courses. Price has been discounted!
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {user && enrolledInfo.isPartiallyOwned ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-bold text-slate-900 dark:text-white">
+                              ₹{enrolledInfo.discountedPrice}
+                            </span>
+                            <span className="text-xs line-through text-slate-400">
+                              ₹{b.price}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-lg font-bold text-slate-900 dark:text-white">
+                            ₹{b.price}
+                          </p>
+                        )}
+                      </div>
+
+                      {user && enrolledInfo.isFullyOwned ? (
+                        <span className="px-3.5 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-500 font-semibold text-xs flex items-center gap-1.5">
+                          ✓ Enrolled
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleBuy(b)}
+                          disabled={buyingId === b._id}
+                          className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl gradient-primary text-white hover:opacity-90 disabled:opacity-60"
+                        >
+                          {buyingId === b._id ? <Loader2 size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
+                          Buy Bundle
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">₹{b.price}</p>
-                  <button
-                    onClick={() => handleBuy(b)}
-                    disabled={buyingId === b._id}
-                    className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl gradient-primary text-white hover:opacity-90 disabled:opacity-60"
-                  >
-                    {buyingId === b._id ? <Loader2 size={14} className="animate-spin" /> : <ShoppingCart size={14} />}
-                    Buy Bundle
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
