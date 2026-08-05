@@ -67,12 +67,22 @@ export const getRevenueCourses = asyncHandler(async (req, res) => {
     "_id title thumbnail isFree price totalEnrollments createdAt"
   );
 
-  // Fetch payments per course for revenue calculation
+  // Fetch payments & live enrollment counts per course
   const courseIds = allCourses.map((c) => c._id);
-  const payments  = await Payment.find({
-    course: { $in: courseIds },
-    status: "completed",
-  }).select("course amount");
+  const [payments, liveEnrollmentCounts] = await Promise.all([
+    Payment.find({
+      course: { $in: courseIds },
+      status: "completed",
+    }).select("course amount"),
+    Enrollment.aggregate([
+      { $match: { course: { $in: courseIds }, isActive: true } },
+      { $group: { _id: "$course", count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const liveEnrollmentMap = new Map(
+    liveEnrollmentCounts.map((e) => [e._id.toString(), e.count])
+  );
 
   const revenueMap = {};
   payments.forEach((p) => {
@@ -80,12 +90,14 @@ export const getRevenueCourses = asyncHandler(async (req, res) => {
     revenueMap[id] = (revenueMap[id] || 0) + p.amount;
   });
 
-  // Sort in memory
+  // Sort in memory using live counts
   const sorted = allCourses.slice().sort((a, b) => {
+    const aCount = liveEnrollmentMap.get(a._id.toString()) || 0;
+    const bCount = liveEnrollmentMap.get(b._id.toString()) || 0;
     if (sort === "revenue") {
       return (revenueMap[b._id.toString()] || 0) - (revenueMap[a._id.toString()] || 0);
     }
-    if (sort === "students") return b.totalEnrollments - a.totalEnrollments;
+    if (sort === "students") return bCount - aCount;
     // newest
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
@@ -139,6 +151,7 @@ export const getRevenueCourses = asyncHandler(async (req, res) => {
     const cid      = course._id.toString();
     const isFree   = course.isFree;
     const revenue  = revenueMap[cid] || 0;
+    const studentCount = liveEnrollmentMap.get(cid) || 0;
 
     // For paid courses use payment records; for free use enrollment records
     const students = isFree
@@ -157,7 +170,7 @@ export const getRevenueCourses = asyncHandler(async (req, res) => {
       isFree,
       price:        course.price,
       revenue,
-      studentCount: course.totalEnrollments,
+      studentCount,
       students,
     };
   });

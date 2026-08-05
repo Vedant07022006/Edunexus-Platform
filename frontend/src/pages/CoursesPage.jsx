@@ -118,8 +118,8 @@ export default function CoursesPage() {
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl font-bold text-white">All Courses</h1>
-          <p className="text-slate-400 mt-1 text-sm">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">All Courses</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">
             {isSearchMode
               ? `${total} results for "${activeQuery}"`
               : `${total} courses available`}
@@ -135,13 +135,13 @@ export default function CoursesPage() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search courses, topics, skills..."
-                className="w-full glass border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all"
+                className="w-full glass border border-slate-900/10 dark:border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all"
               />
               {(query || isSearchMode) && (
                 <button
                   type="button"
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 dark:hover:text-white"
                 >
                   <X size={14} />
                 </button>
@@ -158,10 +158,10 @@ export default function CoursesPage() {
           <select
             value={sort}
             onChange={e => handleSortChange(e.target.value)}
-            className="glass border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-primary-500 bg-transparent cursor-pointer"
+            className="glass border border-slate-900/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-primary-500 bg-transparent cursor-pointer"
           >
             {SORT_OPTIONS.map(o => (
-              <option key={o.value} value={o.value} className="bg-[#1e1e35]">{o.label}</option>
+              <option key={o.value} value={o.value} className="bg-surface-3">{o.label}</option>
             ))}
           </select>
         </div>
@@ -176,7 +176,7 @@ export default function CoursesPage() {
                 className={`px-4 py-1.5 text-sm rounded-full transition-all ${
                   category === cat
                     ? 'gradient-primary text-white glow-sm'
-                    : 'glass border border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+                    : 'glass border border-slate-900/10 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-900/15 dark:hover:border-white/20'
                 }`}
               >
                 {cat}
@@ -188,7 +188,7 @@ export default function CoursesPage() {
         {/* Active search chip */}
         {isSearchMode && (
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xs text-slate-400">Showing results for:</span>
+            <span className="text-xs text-slate-600 dark:text-slate-400">Showing results for:</span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 glass border border-primary-500/30 text-primary-300 rounded-full text-xs">
               {activeQuery}
               <button onClick={clearSearch}><X size={11} /></button>
@@ -204,7 +204,7 @@ export default function CoursesPage() {
               ? (
                 <div className="col-span-full text-center py-20">
                   <Search size={40} className="text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400 text-lg font-medium">No courses found</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-lg font-medium">No courses found</p>
                   <p className="text-slate-600 text-sm mt-1">
                     {isSearchMode ? `Try a different search term` : 'No courses in this category yet'}
                   </p>
@@ -228,7 +228,7 @@ export default function CoursesPage() {
             <button
               onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-4 py-2 glass border border-white/10 rounded-xl text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+              className="px-4 py-2 glass border border-slate-900/10 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-all"
             >
               ← Prev
             </button>
@@ -239,7 +239,7 @@ export default function CoursesPage() {
                 className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${
                   page === p
                     ? 'gradient-primary text-white'
-                    : 'glass border border-white/10 text-slate-400 hover:text-white'
+                    : 'glass border border-slate-900/10 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {p}
@@ -248,7 +248,7 @@ export default function CoursesPage() {
             <button
               onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 glass border border-white/10 rounded-xl text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-all"
+              className="px-4 py-2 glass border border-slate-900/10 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-all"
             >
               Next →
             </button>

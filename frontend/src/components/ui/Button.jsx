@@ -3,8 +3,8 @@ import clsx from 'clsx';
 
 const variants = {
   primary: 'gradient-primary text-white hover:opacity-90 glow-sm',
-  secondary: 'glass-strong text-white hover:bg-white/10 border border-white/10',
-  ghost: 'text-slate-300 hover:text-white hover:bg-white/5',
+  secondary: 'glass-strong text-slate-900 dark:text-white hover:bg-slate-900/10 dark:hover:bg-white/10 border border-slate-900/10 dark:border-white/10',
+  ghost: 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/5 dark:hover:bg-white/5',
   danger: 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30',
 };
 

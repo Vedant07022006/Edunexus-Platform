@@ -11,7 +11,9 @@ const paymentSchema = new Schema(
     course: {
       type: Schema.Types.ObjectId,
       ref: "Course",
-      required: [true, "Course reference is required"],
+      required: function () {
+        return !this.bundle; // NEW — not required for bundle purchases
+      },
     },
 
     razorpayOrderId: {
@@ -59,6 +61,24 @@ const paymentSchema = new Schema(
     enrollmentCreated: {
       type: Boolean,
       default: false,
+    },
+
+    // NEW — Phase 4: coupon tracking (optional, backward compatible)
+    couponCode: {
+      type: String,
+      default: null,
+    },
+    originalAmount: {
+      type: Number,
+      default: null,
+    },
+
+    // NEW — Phase 4: bundle purchases share one bundleOrderId across
+    // multiple per-course Payment docs, so refunds/lookups can group them
+    bundle: {
+      type: Schema.Types.ObjectId,
+      ref: "Bundle",
+      default: null,
     },
   },
   { timestamps: true }

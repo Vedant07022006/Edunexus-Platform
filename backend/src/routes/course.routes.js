@@ -11,6 +11,8 @@ import {
   getMyArchivedCourses,
   searchCourses,
   getCoursesByCategory,
+  generateCourseAiAssist,
+  getCourseAnalytics,
 } from "../controllers/course.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
 import optionalAuth from "../middlewares/optionalAuth.middleware.js";
@@ -28,10 +30,12 @@ router.get("/category/:category", getCoursesByCategory);
 // /my/courses must be before /:courseId or Express treats "my" as a courseId
 router.get("/my/courses", verifyJWT, isInstructor, getMyCourses);
 router.get("/my/archived", verifyJWT, isInstructor, getMyArchivedCourses);
+router.post("/ai-assist", verifyJWT, isInstructor, generateCourseAiAssist); // NEW — Phase 2
 
 router.post("/", verifyJWT, isInstructor, uploadThumbnail, createCourse);
 router.patch("/:courseId/publish", verifyJWT, isInstructor, publishCourse);
 router.patch("/:courseId/restore", verifyJWT, isInstructor, restoreCourse);
+router.get("/:courseId/analytics", verifyJWT, isInstructor, getCourseAnalytics); // NEW — Phase 4
 router.patch("/:courseId", verifyJWT, isInstructor, uploadThumbnail, updateCourse);
 router.delete("/:courseId", verifyJWT, isInstructor, deleteCourse);
 

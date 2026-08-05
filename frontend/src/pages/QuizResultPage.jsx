@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getAttemptDetails, checkQuizEligibility } from '../services/api.service';
+import { getAttemptDetails, checkQuizEligibility, generateWeakSpotReview } from '../services/api.service';
 import { useAuth } from '../context/AuthContext';
 import ChatbotWidget from '../components/ChatbotWidget';
+import toast from 'react-hot-toast';
 import {
   CheckCircle2, XCircle, Clock, RotateCcw,
-  AlertTriangle, Loader2, Info, ShieldAlert, MessageCircle,
+  AlertTriangle, Loader2, Info, ShieldAlert, MessageCircle, Sparkles,
 } from 'lucide-react';
 
 export default function QuizResultPage() {
@@ -27,6 +28,10 @@ export default function QuizResultPage() {
   const [retryStatus, setRetryStatus] = useState(null); // eligibility result for Try Again
   const [checkingRetry, setCheckingRetry] = useState(false);
 
+  // NEW — Phase 2: personalized weak-spot review
+  const [weakSpots, setWeakSpots] = useState(null);
+  const [loadingWeakSpots, setLoadingWeakSpots] = useState(false);
+
   // Load the full attempt breakdown. Works both right after submission
   // (using the attemptId returned by submitQuiz) and on a page refresh
   // or direct link, since it always re-fetches from the server rather
@@ -44,6 +49,10 @@ export default function QuizResultPage() {
       try {
         const { data } = await getAttemptDetails(attemptId);
         setAttempt(data.data);
+        // NEW — Phase 2: pre-fill if a review was already generated earlier
+        if (data.data.weakSpotStatus === 'completed' && data.data.weakSpotReview?.length > 0) {
+          setWeakSpots(data.data.weakSpotReview);
+        }
       } catch (err) {
         setLoadError(err.response?.data?.message || 'Failed to load quiz result');
       } finally {
@@ -52,6 +61,20 @@ export default function QuizResultPage() {
     };
     load();
   }, [submitResult]);
+
+  // NEW — Phase 2: on-demand personalized weak-spot feedback
+  const handleGetWeakSpots = async () => {
+    if (!attempt?._id) return;
+    setLoadingWeakSpots(true);
+    try {
+      const { data } = await generateWeakSpotReview(attempt._id);
+      setWeakSpots(data.data.weakSpotReview);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to generate feedback');
+    } finally {
+      setLoadingWeakSpots(false);
+    }
+  };
 
   const handleTryAgainClick = async () => {
     setCheckingRetry(true);
@@ -79,10 +102,10 @@ export default function QuizResultPage() {
   if (loadError || !attempt) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="glass rounded-2xl p-8 text-center border border-white/[0.06] max-w-md">
+        <div className="glass rounded-2xl p-8 text-center border border-slate-900/[0.06] dark:border-white/[0.06] max-w-md">
           <AlertTriangle size={36} className="text-yellow-400 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-white mb-2">Couldn't load result</h2>
-          <p className="text-sm text-slate-400 mb-6">{loadError}</p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Couldn't load result</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">{loadError}</p>
           <button
             onClick={() => navigate(-1)}
             className="gradient-primary text-white text-sm font-medium px-6 py-2.5 rounded-xl hover:opacity-90 transition-opacity"
@@ -118,7 +141,7 @@ export default function QuizResultPage() {
         {/* Score card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-2xl border border-white/[0.06] p-8 text-center mb-6"
+          className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] p-8 text-center mb-6"
         >
           <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold ${
             isPassed ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
@@ -129,7 +152,7 @@ export default function QuizResultPage() {
           <h2 className={`text-lg font-semibold mb-1 ${isPassed ? 'text-emerald-400' : 'text-red-400'}`}>
             {isPassed ? 'Passed!' : 'Not Passed'}
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Attempt {attemptNumber} of {maxAttempts || 3} · Passing score: {passingScore}%
           </p>
 
@@ -140,17 +163,17 @@ export default function QuizResultPage() {
           )}
 
           <div className="grid grid-cols-3 gap-3 mt-6">
-            <div className="bg-white/5 rounded-xl p-3">
+            <div className="bg-slate-900/5 dark:bg-white/5 rounded-xl p-3">
               <p className="text-xs text-slate-500 mb-1">Correct</p>
               <p className="text-lg font-bold text-emerald-400">{totalCorrect}</p>
             </div>
-            <div className="bg-white/5 rounded-xl p-3">
+            <div className="bg-slate-900/5 dark:bg-white/5 rounded-xl p-3">
               <p className="text-xs text-slate-500 mb-1">Wrong</p>
               <p className="text-lg font-bold text-red-400">{totalQuestions - totalCorrect}</p>
             </div>
-            <div className="bg-white/5 rounded-xl p-3">
+            <div className="bg-slate-900/5 dark:bg-white/5 rounded-xl p-3">
               <p className="text-xs text-slate-500 mb-1">Time taken</p>
-              <p className="text-lg font-bold text-white flex items-center justify-center gap-1">
+              <p className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-center gap-1">
                 <Clock size={14} /> {minutes}m {seconds}s
               </p>
             </div>
@@ -159,11 +182,49 @@ export default function QuizResultPage() {
           <button
             onClick={() => setShowChatbot((v) => !v)}
             className="mt-5 inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-xl
-                       bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:border-primary-500/40 transition-all"
+                       bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-primary-500/40 transition-all"
           >
             <MessageCircle size={15} /> {showChatbot ? 'Hide Doubt Assistant' : 'Ask a Doubt'}
           </button>
         </motion.div>
+
+        {/* Personalized weak-spot review — NEW, Phase 2 */}
+        {totalCorrect < totalQuestions && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.02 }}
+            className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] p-5 mb-6"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={16} className="text-yellow-400" />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Personalized Feedback</h3>
+            </div>
+
+            {!weakSpots ? (
+              <div className="flex items-center justify-between flex-wrap gap-3 mt-2">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Get AI-powered suggestions on what to review based on your wrong answers.
+                </p>
+                <button
+                  onClick={handleGetWeakSpots}
+                  disabled={loadingWeakSpots}
+                  className="flex-shrink-0 flex items-center gap-2 text-sm px-4 py-2 rounded-xl gradient-primary text-white hover:opacity-90 transition-opacity disabled:opacity-60"
+                >
+                  {loadingWeakSpots ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {loadingWeakSpots ? 'Analyzing...' : 'Get Feedback'}
+                </button>
+              </div>
+            ) : (
+              <ul className="space-y-2 mt-3">
+                {weakSpots.map((point, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-1.5 flex-shrink-0" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </motion.div>
+        )}
 
         {/* AI Doubt Chatbot */}
         {showChatbot && (
@@ -180,10 +241,10 @@ export default function QuizResultPage() {
         )}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="glass rounded-2xl border border-white/[0.06] p-5 mb-6 flex items-center justify-between flex-wrap gap-3"
+          className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] p-5 mb-6 flex items-center justify-between flex-wrap gap-3"
         >
           <div>
-            <p className="text-sm text-white font-medium">
+            <p className="text-sm text-slate-900 dark:text-white font-medium">
               {attemptsLeft > 0 ? `${attemptsLeft} attempt${attemptsLeft !== 1 ? 's' : ''} remaining` : 'No attempts remaining'}
             </p>
             {retryStatus && !retryStatus.eligible && (
@@ -225,9 +286,9 @@ export default function QuizResultPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <p className="text-sm font-medium text-white">{i + 1}. {item.question}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{i + 1}. {item.question}</p>
                     {item.difficulty && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-400 capitalize">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-400 capitalize">
                         {item.difficulty}
                       </span>
                     )}
@@ -247,7 +308,7 @@ export default function QuizResultPage() {
                   )}
 
                   {item.explanation && (
-                    <p className="text-xs text-slate-400 mt-2 bg-white/5 rounded-lg p-2.5">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 bg-slate-900/5 dark:bg-white/5 rounded-lg p-2.5">
                       {item.explanation}
                     </p>
                   )}
@@ -259,7 +320,7 @@ export default function QuizResultPage() {
 
         <button
           onClick={() => navigate(-2)}
-          className="mt-6 w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white transition-colors"
+          className="mt-6 w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
         >
           Back to Lecture
         </button>

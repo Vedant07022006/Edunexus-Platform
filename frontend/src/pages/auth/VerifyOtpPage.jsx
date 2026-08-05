@@ -83,8 +83,8 @@ export default function VerifyOtpPage() {
           <Mail size={28} className="text-white" />
         </div>
 
-        <h2 className="text-3xl font-bold text-white mb-2">Verify your email</h2>
-        <p className="text-slate-400 text-sm mb-2">We sent a 6-digit code to</p>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Verify your email</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">We sent a 6-digit code to</p>
         <p className="text-primary-300 font-medium mb-8">{email}</p>
 
         {/* OTP Inputs */}
@@ -100,7 +100,7 @@ export default function VerifyOtpPage() {
               onChange={e => handleChange(i, e.target.value)}
               onKeyDown={e => handleKeyDown(i, e)}
               onPaste={handlePaste}
-              className="w-12 h-14 text-center text-xl font-bold glass border border-white/10 rounded-xl text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition-all"
+              className="w-12 h-14 text-center text-xl font-bold glass border border-slate-900/10 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition-all"
             />
           ))}
         </div>

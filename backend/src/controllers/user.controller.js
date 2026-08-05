@@ -88,7 +88,7 @@ export const registerUser = asyncHandler(async (req, res) => {
       otpExpiresAt,
       otpAttempts: 0,
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 
   await sendOtpEmail(email, otp);
@@ -214,6 +214,23 @@ export const loginUser = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) throw new ApiError(401, "Invalid credentials");
 
+  // NEW — Phase 5: 2FA branch. Only triggers for users who opted in;
+  // everyone else falls through to the original login flow unchanged.
+  if (user.twoFactorEnabled) {
+    const otp = generateOtp();
+    // Store a SHA-256 hash — never store plaintext OTPs in the DB.
+    // (Matches the pattern used for signup OTP and password-reset tokens.)
+    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+    user.loginOtp = hashedOtp;
+    user.loginOtpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    await user.save({ validateBeforeSave: false });
+    await sendOtpEmail(user.email, otp); // send the raw OTP to the user
+
+    return res.status(200).json(
+      new ApiResponse(200, { requiresOtp: true, email: user.email }, "OTP sent to your email")
+    );
+  }
+
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id
   );
@@ -233,6 +250,54 @@ export const loginUser = asyncHandler(async (req, res) => {
         "Login successful"
       )
     );
+});
+
+
+// NEW — Phase 5: completes a 2FA login after loginUser sent an OTP
+export const verifyLoginOtp = asyncHandler(async (req, res) => {
+  let { email, otp } = req.body || {};
+  if (!email || !otp) throw new ApiError(400, "Email and OTP are required");
+  email = email.toLowerCase().trim();
+
+  const user = await User.findOne({ email }).select("+loginOtp +loginOtpExpiry");
+  if (!user || !user.loginOtp) throw new ApiError(400, "No pending OTP for this account");
+
+  if (user.loginOtpExpiry < new Date()) {
+    throw new ApiError(400, "OTP has expired, please log in again");
+  }
+
+  // Compare hashes — loginOtp in DB is SHA-256 of the raw OTP.
+  const hashedInput = crypto.createHash("sha256").update(otp.trim()).digest("hex");
+  if (user.loginOtp !== hashedInput) throw new ApiError(400, "Invalid OTP");
+
+  user.loginOtp = null;
+  user.loginOtpExpiry = null;
+  await user.save({ validateBeforeSave: false });
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken -resetPasswordToken -resetPasswordExpiry"
+  );
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(new ApiResponse(200, { user: loggedInUser, accessToken }, "Login successful"));
+});
+
+// NEW — Phase 5: toggle 2FA from the profile page (already-authenticated request)
+export const toggleTwoFactor = asyncHandler(async (req, res) => {
+  const { enabled } = req.body;
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { twoFactorEnabled: !!enabled },
+    { returnDocument: 'after' }
+  ).select("-password -refreshToken");
+
+  return res.status(200).json(
+    new ApiResponse(200, user, `Two-factor authentication ${enabled ? "enabled" : "disabled"}`)
+  );
 });
 
 
@@ -300,7 +365,8 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   // Point to the backend-served reset page so it works even if the frontend isn't running
   const port = process.env.PORT || 8000;
-  const resetLink = `http://localhost:${port}/api/v1/users/reset-password-page/${resetToken}`;
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${port}`;
+  const resetLink = `${backendUrl}/api/v1/users/reset-password-page/${resetToken}`;
   await sendResetPasswordEmail(user.email, resetLink);
 
   return res
@@ -315,6 +381,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const serveResetPasswordPage = (req, res) => {
   const { token } = req.params;
   const port = process.env.PORT || 8000;
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${port}`;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
   res.send(`<!DOCTYPE html>
@@ -502,7 +569,7 @@ export const serveResetPasswordPage = (req, res) => {
 
   <script>
     const TOKEN = "${token}";
-    const API   = "http://localhost:${port}/api/v1/users/reset-password/" + TOKEN;
+    const API   = "${backendUrl}/api/v1/users/reset-password/" + TOKEN;
     const FRONTEND = "${frontendUrl}";
 
     const formScreen    = document.getElementById('formScreen');
@@ -646,7 +713,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
         ...(bio && { bio }),
       },
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   ).select("-password -refreshToken");
 
   return res

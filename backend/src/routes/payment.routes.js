@@ -5,6 +5,9 @@ import {
   getPaymentHistory,
   getCoursePayments,
   razorpayWebhook,
+  refundPayment,
+  createBundleOrder,
+  verifyBundlePayment,
 } from "../controllers/payment.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
 import { isInstructor, isStudent } from "../middlewares/role.middleware.js";
@@ -36,6 +39,10 @@ router.get(
   getPaymentHistory
 );
 
+// NEW — Phase 4: bundle checkout
+router.post("/bundle/create-order/:bundleId", verifyJWT, isStudent, createBundleOrder);
+router.post("/bundle/verify", verifyJWT, isStudent, verifyBundlePayment);
+
 
 // INSTRUCTOR ROUTES
 
@@ -45,5 +52,8 @@ router.get(
   isInstructor,
   getCoursePayments
 );
+
+// NEW — Phase 5: refund
+router.post("/refund/:paymentId", verifyJWT, isInstructor, refundPayment);
 
 export default router;

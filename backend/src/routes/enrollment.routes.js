@@ -5,6 +5,7 @@ import {
   getMyEnrollments,
   getMyPurchases,
   updateProgress,
+  updateLastWatchedPosition,
   getCourseEnrollments,
   revokeEnrollment,
   restoreEnrollment,
@@ -20,6 +21,7 @@ router.get("/check/:courseId",     verifyJWT, checkEnrollment);
 router.get("/my-enrollments",      verifyJWT, isStudent, getMyEnrollments);
 router.get("/my-purchases",        verifyJWT, isStudent, getMyPurchases);   // NEW
 router.patch("/progress/:courseId", verifyJWT, isStudent, updateProgress);
+router.patch("/position/:courseId", verifyJWT, isStudent, updateLastWatchedPosition); // NEW
 
 // INSTRUCTOR ROUTES
 router.get("/course/:courseId",          verifyJWT, isInstructor, getCourseEnrollments);

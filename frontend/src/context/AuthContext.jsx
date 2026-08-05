@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getMyProfile, loginUser, logoutUser, registerUser } from '../services/api.service';
+import { getMyProfile, loginUser, logoutUser, registerUser, verifyLoginOtp } from '../services/api.service';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -28,6 +28,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const { data } = await loginUser(credentials);
+    // NEW — Phase 5: 2FA branch — backend returns requiresOtp instead of
+    // user/accessToken when the account has 2FA enabled. Don't log in yet.
+    if (data.data.requiresOtp) return data;
+    localStorage.setItem('accessToken', data.data.accessToken);
+    setUser(data.data.user);
+    return data;
+  };
+
+  // NEW — Phase 5: completes a 2FA login after OTP verification
+  const completeLoginWithOtp = async (otpData) => {
+    const { data } = await verifyLoginOtp(otpData);
     localStorage.setItem('accessToken', data.data.accessToken);
     setUser(data.data.user);
     return data;
@@ -42,7 +53,7 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (updated) => setUser((prev) => ({ ...prev, ...updated }));
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser, fetchProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, completeLoginWithOtp, logout, updateUser, fetchProfile }}>
       {children}
     </AuthContext.Provider>
   );

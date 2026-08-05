@@ -18,7 +18,7 @@ export default function CourseCard({ course, index = 0 }) {
       transition={{ delay: index * 0.05, duration: 0.4 }}
     >
       <Link to={`/courses/${course._id}`}>
-        <div className="glass rounded-2xl overflow-hidden card-hover border border-white/[0.06] group">
+        <div className="glass rounded-2xl overflow-hidden card-hover border border-slate-900/[0.06] dark:border-white/[0.06] group">
           {/* Thumbnail */}
           <div className="relative aspect-video bg-surface-3 overflow-hidden">
             {course.thumbnail?.url ? (
@@ -57,11 +57,11 @@ export default function CourseCard({ course, index = 0 }) {
               {course.level}
             </span>
 
-            <h3 className="mt-2 font-semibold text-white text-sm leading-snug line-clamp-2 group-hover:text-primary-300 transition-colors">
+            <h3 className="mt-2 font-semibold text-slate-900 dark:text-white text-sm leading-snug line-clamp-2 group-hover:text-primary-300 transition-colors">
               {course.title}
             </h3>
 
-            <p className="mt-1 text-xs text-slate-400 truncate">
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 truncate">
               by {course.instructor?.fullName || 'Instructor'}
             </p>
 
@@ -98,13 +98,13 @@ export default function CourseCard({ course, index = 0 }) {
 
 export function CourseCardSkeleton() {
   return (
-    <div className="glass rounded-2xl overflow-hidden border border-white/[0.06] animate-pulse">
-      <div className="aspect-video bg-white/5" />
+    <div className="glass rounded-2xl overflow-hidden border border-slate-900/[0.06] dark:border-white/[0.06] animate-pulse">
+      <div className="aspect-video bg-slate-900/5 dark:bg-white/5" />
       <div className="p-4 space-y-3">
-        <div className="h-3 bg-white/5 rounded w-20" />
-        <div className="h-4 bg-white/5 rounded w-full" />
-        <div className="h-3 bg-white/5 rounded w-3/4" />
-        <div className="h-3 bg-white/5 rounded w-1/2" />
+        <div className="h-3 bg-slate-900/5 dark:bg-white/5 rounded w-20" />
+        <div className="h-4 bg-slate-900/5 dark:bg-white/5 rounded w-full" />
+        <div className="h-3 bg-slate-900/5 dark:bg-white/5 rounded w-3/4" />
+        <div className="h-3 bg-slate-900/5 dark:bg-white/5 rounded w-1/2" />
       </div>
     </div>
   );

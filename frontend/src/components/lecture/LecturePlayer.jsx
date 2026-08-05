@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getCourseLectures, updateProgress, checkEnrollment, checkQuizEligibility } from '../../services/api.service';
+import { getCourseLectures, updateProgress, updateLastWatchedPosition, checkEnrollment, checkQuizEligibility } from '../../services/api.service';
 import { useAuth } from '../../context/AuthContext';
 import { CheckCircle, Lock, BookOpen, Clock, ShieldCheck, Archive, AlertCircle, PlayCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import TranscriptPanel from './TranscriptPanel'; // NEW
+import LectureSummary from './LectureSummary'; // NEW — Phase 2
+import DiscussionPanel from './DiscussionPanel'; // NEW — Phase 3
 
 const LS_KEY = (courseId) => `edunexus_last_lecture_${courseId}`;
 
@@ -29,6 +32,11 @@ export default function LecturePlayer({ courseId }) {
   const markedRef = useRef(new Set());
   const videoRef  = useRef(null);
 
+  // NEW — resume-from-exact-position tracking
+  const resumeLectureIdRef = useRef(null); // which lecture id we should seek into on first load
+  const resumeSecondsRef   = useRef(0);    // seconds to seek to for that lecture
+  const lastPositionSaveRef = useRef(0);   // Date.now() of last position heartbeat (throttling)
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -49,6 +57,9 @@ export default function LecturePlayer({ courseId }) {
               enData?.data?.enrollment?.lastWatchedLecture;
             if (lastId) resumeId = lastId.toString();
 
+            // NEW — remember exact playback position for resume-seek
+            resumeSecondsRef.current = enData?.data?.enrollment?.lastWatchedSeconds || 0;
+
             const completed = enData?.data?.enrollment?.completedLectures || [];
             setCompletedIds(completed.map((id) => id.toString()));
           } catch {
@@ -57,6 +68,7 @@ export default function LecturePlayer({ courseId }) {
         }
 
         if (!resumeId) resumeId = localStorage.getItem(LS_KEY(courseId));
+        resumeLectureIdRef.current = resumeId; // NEW
 
         const resumeLecture = resumeId
           ? lectures.find((l) => l._id.toString() === resumeId)
@@ -72,18 +84,75 @@ export default function LecturePlayer({ courseId }) {
     load();
   }, [courseId, user]);
 
+  const markLectureCompleted = useCallback(() => {
+    if (!activeLecture || markedRef.current.has(activeLecture._id)) return;
+    markedRef.current.add(activeLecture._id);
+    updateProgress(courseId, { lectureId: activeLecture._id })
+      .then(() => {
+        setCompletedIds((prev) => [...new Set([...prev, activeLecture._id])]);
+        // Re-check quiz eligibility to immediately unlock the Quiz tab for student
+        if (user && !lecturesData?.isInstructor) {
+          checkQuizEligibility(activeLecture._id)
+            .then(({ data }) => setQuizStatus(data.data))
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [activeLecture, courseId, user, lecturesData?.isInstructor]);
+
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current;
     if (!video || !activeLecture) return;
     const played = video.currentTime / video.duration;
-    if (played > 0.8 && !markedRef.current.has(activeLecture._id)) {
-      markedRef.current.add(activeLecture._id);
-      updateProgress(courseId, { lectureId: activeLecture._id })
-        .then(() =>
-          setCompletedIds((prev) => [...new Set([...prev, activeLecture._id])])
-        )
-        .catch(() => {});
+    if (played > 0.8) {
+      markLectureCompleted();
     }
+
+    // NEW — lightweight playback-position heartbeat, throttled to once per
+    // ~10s of real time so we don't hammer the API on every timeupdate tick.
+    const now = Date.now();
+    if (now - lastPositionSaveRef.current > 10000) {
+      lastPositionSaveRef.current = now;
+      updateLastWatchedPosition(courseId, {
+        lectureId: activeLecture._id,
+        seconds: Math.floor(video.currentTime),
+      }).catch(() => {});
+    }
+  }, [activeLecture, courseId, markLectureCompleted]);
+
+  const handleEnded = useCallback(() => {
+    markLectureCompleted();
+  }, [markLectureCompleted]);
+
+  // NEW — once the video's metadata is loaded, seek to the saved resume
+  // position if this is the lecture the student was last watching.
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !activeLecture) return;
+
+    if (
+      resumeLectureIdRef.current &&
+      activeLecture._id.toString() === resumeLectureIdRef.current &&
+      resumeSecondsRef.current > 2 &&
+      resumeSecondsRef.current < video.duration - 2
+    ) {
+      video.currentTime = resumeSecondsRef.current;
+    }
+
+    // Only apply the resume-seek once — subsequent replays of the same
+    // lecture in this session should start from wherever the user seeks.
+    resumeLectureIdRef.current = null;
+  }, [activeLecture]);
+
+  // NEW — save position immediately when the student pauses, instead of
+  // waiting for the next 10s heartbeat.
+  const handlePause = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !activeLecture) return;
+    updateLastWatchedPosition(courseId, {
+      lectureId: activeLecture._id,
+      seconds: Math.floor(video.currentTime),
+    }).catch(() => {});
   }, [activeLecture, courseId]);
 
   // Check quiz eligibility whenever the active lecture changes.
@@ -129,8 +198,10 @@ export default function LecturePlayer({ courseId }) {
   const hasVideo      = !!videoUrl;
 
   const TABS = [
-    { id: 'overview', label: '📋 Overview' },
-    { id: 'quiz',     label: '🧠 Quiz' },
+    { id: 'overview',   label: '📋 Overview' },
+    { id: 'transcript', label: '📝 Transcript' }, // NEW
+    { id: 'discussion', label: '💬 Discussion' }, // NEW — Phase 3
+    { id: 'quiz',       label: '🧠 Quiz' },
   ];
 
   return (
@@ -152,7 +223,7 @@ export default function LecturePlayer({ courseId }) {
         {/* Discontinued badge — shown to enrolled students when instructor has deleted the course */}
         {!isInstructor && isArchived && (
           <div className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium
-                          bg-slate-500/10 border border-slate-500/20 text-slate-400
+                          bg-slate-500/10 border border-slate-500/20 text-slate-600 dark:text-slate-400
                           px-3 py-1.5 rounded-full">
             <Archive size={13} />
             This course has been discontinued by the instructor — you keep full access
@@ -170,11 +241,14 @@ export default function LecturePlayer({ courseId }) {
               controlsList="nodownload"
               className="w-full h-full"
               onTimeUpdate={handleTimeUpdate}
+              onEnded={handleEnded}
+              onLoadedMetadata={handleLoadedMetadata}
+              onPause={handlePause}
               onError={() => setVideoError(true)}
               preload="metadata"
             />
           ) : hasVideo && videoError ? (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-surface-3 text-slate-400 p-6 text-center">
+            <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-surface-3 text-slate-600 dark:text-slate-400 p-6 text-center">
               <BookOpen size={40} className="opacity-40" />
               <p className="text-sm">Unable to play video inline.</p>
               <a
@@ -218,7 +292,7 @@ export default function LecturePlayer({ courseId }) {
                     ? 'bg-primary-600 text-white'
                     : quizLocked
                     ? 'text-slate-600 cursor-not-allowed opacity-50'
-                    : 'text-slate-400 hover:text-white cursor-pointer'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer'
                 }`}
               >
                 {isQuizTab && quizLocked && <Lock size={11} />}
@@ -257,10 +331,12 @@ export default function LecturePlayer({ courseId }) {
         {/* Tab Content */}
         <div className="mt-4">
           {activeTab === 'overview' && activeLecture && (
-            <div className="glass rounded-2xl p-6 border border-white/[0.06] space-y-3">
-              <h2 className="text-xl font-bold text-white">{activeLecture.title}</h2>
+            <>
+              <LectureSummary lectureId={activeLecture._id} hasAccess={hasFullAccess} />
+              <div className="glass rounded-2xl p-6 border border-slate-900/[0.06] dark:border-white/[0.06] space-y-3">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{activeLecture.title}</h2>
 
-              <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+              <div className="flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
                 {activeLecture.video?.duration > 0 && (
                   <span className="flex items-center gap-1.5">
                     <Clock size={14} className="text-primary-400" />
@@ -271,7 +347,7 @@ export default function LecturePlayer({ courseId }) {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${
                   lecturesData?.isFree || activeLecture.isFree
                     ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-white/5 text-slate-400'
+                    : 'bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-400'
                 }`}>
                   {lecturesData?.isFree ? 'Free' : activeLecture.isFree ? 'Free preview' : 'Paid'}
                 </span>
@@ -284,20 +360,33 @@ export default function LecturePlayer({ courseId }) {
               </div>
 
               {activeLecture.description ? (
-                <p className="text-sm text-slate-400 leading-relaxed">{activeLecture.description}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{activeLecture.description}</p>
               ) : (
                 <p className="text-sm text-slate-500 italic">No description for this lecture.</p>
               )}
             </div>
+            </>
+          )}
+
+          {activeTab === 'transcript' && activeLecture && (
+            <TranscriptPanel
+              lectureId={activeLecture._id}
+              videoRef={videoRef}
+              hasAccess={hasFullAccess}
+            />
+          )}
+
+          {activeTab === 'discussion' && activeLecture && (
+            <DiscussionPanel lectureId={activeLecture._id} courseId={courseId} hasAccess={hasFullAccess} />
           )}
 
           {activeTab === 'quiz' && activeLecture && (
-            <div className="glass rounded-2xl p-8 border border-white/[0.06] text-center">
+            <div className="glass rounded-2xl p-8 border border-slate-900/[0.06] dark:border-white/[0.06] text-center">
               {isInstructor ? (
                 <>
                   <BookOpen size={36} className="text-primary-400 mx-auto mb-3" />
-                  <h3 className="text-base font-semibold text-white mb-1">Quiz preview</h3>
-                  <p className="text-sm text-slate-400 mb-5">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Quiz preview</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
                     As the course owner, manage and preview this lecture's quiz from the course management page.
                   </p>
                   <button
@@ -310,8 +399,8 @@ export default function LecturePlayer({ courseId }) {
               ) : quizStatus?.eligible ? (
                 <>
                   <PlayCircle size={36} className="text-primary-400 mx-auto mb-3" />
-                  <h3 className="text-base font-semibold text-white mb-1">Ready to start your quiz</h3>
-                  <p className="text-sm text-slate-400 mb-5">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Ready to start your quiz</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
                     20 questions · {quizStatus.attemptsLeft} attempt{quizStatus.attemptsLeft !== 1 ? 's' : ''} left · 20 minute timer
                   </p>
                   <button
@@ -324,8 +413,8 @@ export default function LecturePlayer({ courseId }) {
               ) : (
                 <>
                   <Lock size={36} className="text-slate-500 mx-auto mb-3" />
-                  <h3 className="text-base font-semibold text-white mb-1">Quiz locked</h3>
-                  <p className="text-sm text-slate-400">{quizStatus?.message || 'Checking eligibility...'}</p>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Quiz locked</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{quizStatus?.message || 'Checking eligibility...'}</p>
                 </>
               )}
             </div>
@@ -334,9 +423,9 @@ export default function LecturePlayer({ courseId }) {
       </div>
 
       {/* Sidebar — Lecture List */}
-      <div className="w-full lg:w-80 glass rounded-2xl border border-white/[0.06] overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-white/[0.06]">
-          <h3 className="font-semibold text-white text-sm">Course Content</h3>
+      <div className="w-full lg:w-80 glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-slate-900/[0.06] dark:border-white/[0.06]">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Course Content</h3>
           <p className="text-xs text-slate-500 mt-0.5">{lectures.length} lectures</p>
 
           {/* Progress bar — only for students */}
@@ -346,7 +435,7 @@ export default function LecturePlayer({ courseId }) {
                 <span>Progress</span>
                 <span>{progress}%</span>
               </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-slate-900/10 dark:bg-white/10 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full gradient-primary rounded-full"
                   initial={{ width: 0 }}
@@ -371,7 +460,9 @@ export default function LecturePlayer({ courseId }) {
             const isActive = activeLecture?._id === lecture._id;
             const isDone   = completedIds.includes(lecture._id);
             // Instructor is never locked
-            const isLocked = !isInstructor && !isEnrolled && !lecturesData?.isFree && !lecture.isFree;
+            const isEnrollmentLocked = !isInstructor && !isEnrolled && !lecturesData?.isFree && !lecture.isFree;
+            const isDripLocked = !!lecture.isDripLocked; // NEW — Phase 4, backend-computed
+            const isLocked = isEnrollmentLocked || isDripLocked;
 
             return (
               <button
@@ -380,7 +471,7 @@ export default function LecturePlayer({ courseId }) {
                 className={`w-full text-left p-3 rounded-xl mb-1 transition-all ${
                   isActive
                     ? 'bg-primary-500/20 border border-primary-500/30'
-                    : 'hover:bg-white/5'
+                    : 'hover:bg-slate-900/5 dark:hover:bg-white/5'
                 } ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
               >
                 <div className="flex items-start gap-2.5">
@@ -389,19 +480,24 @@ export default function LecturePlayer({ courseId }) {
                       ? 'bg-emerald-500/20 text-emerald-400'
                       : isActive
                       ? 'bg-primary-500/30 text-primary-400'
-                      : 'bg-white/5 text-slate-500'
+                      : 'bg-slate-900/5 dark:bg-white/5 text-slate-500'
                   }`}>
                     {isLocked ? <Lock size={10} /> : isDone ? <CheckCircle size={12} /> : i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs font-medium leading-snug ${
-                      isActive ? 'text-primary-300' : isDone ? 'text-slate-400' : 'text-slate-300'
+                      isActive ? 'text-primary-300' : isDone ? 'text-slate-600 dark:text-slate-400' : 'text-slate-700 dark:text-slate-300'
                     }`}>
                       {lecture.title}
                     </p>
-                    {lecture.video?.duration > 0 && (
+                    {lecture.video?.duration > 0 && !isDripLocked && (
                       <p className="text-xs text-slate-600 mt-0.5">
                         {formatDuration(lecture.video.duration)}
+                      </p>
+                    )}
+                    {isDripLocked && (
+                      <p className="text-xs text-yellow-500 mt-0.5">
+                        Available {new Date(lecture.releaseDate).toLocaleDateString()}
                       </p>
                     )}
                   </div>

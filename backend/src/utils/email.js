@@ -159,3 +159,33 @@ export const sendInstructorEnrollmentEmail = async (
     `,
   });
 };
+
+
+// ─── NEW: Send email notification when payment is refunded ─────────────────────
+export const sendRefundEmail = async (to, { studentName, courseName, amount }) => {
+  const transporter = await getTransporter();
+  const amountStr = amount > 0 ? `₹${amount}` : "Free";
+
+  await transporter.sendMail({
+    from: `"EduNexus" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: `Payment Refunded & Access Revoked — ${courseName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Payment Refunded</h2>
+        <p>Hi <strong>${studentName}</strong>,</p>
+        <p>
+          Your payment of <strong>${amountStr}</strong> for the course
+          <strong>${courseName}</strong> has been refunded by the instructor.
+        </p>
+        <p style="color: #d97706; font-weight: 500;">
+          Your enrollment and access to this course have been revoked.
+        </p>
+        <p style="color: #888; font-size: 12px; margin-top: 24px;">
+          If you have questions regarding this refund, please contact support or your instructor.<br/>
+          Team EduNexus
+        </p>
+      </div>
+    `,
+  });
+};

@@ -4,6 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import { Lecture } from "../models/lecture.model.js";
 import { Course } from "../models/course.model.js";
 import { Enrollment } from "../models/enrollment.model.js";
+import { Transcript } from "../models/transcript.model.js"; // NEW — Phase 2: summary status lookup
 import { uploadVideoOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 
 // ─── Shared helper ─────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ const getOwnedLecture = async (lectureId, instructorId) => {
 
 export const addLecture = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  const { title, description, order, isFree } = req.body;
+  const { title, description, order, isFree, releaseDate } = req.body; // releaseDate NEW — Phase 4
 
   if (!title || order === undefined) throw new ApiError(400, "Title and order are required");
   if (!req.file) throw new ApiError(400, "Video file is required");
@@ -51,6 +52,7 @@ export const addLecture = asyncHandler(async (req, res) => {
     },
     order: Number(order),
     isFree: isFree === "true" || isFree === true,
+    releaseDate: releaseDate || null, // NEW — Phase 4
     isPublished: true,
     processingStatus: "pending",
   });
@@ -151,12 +153,29 @@ export const getCourseLectures = asyncHandler(async (req, res) => {
     .select("-__v")
     .sort({ order: 1 });
 
+  // NEW — Phase 2: attach each lecture's summary status in one batched
+  // query, so ManageCoursePage can show a "Summary" done/pending indicator
+  // without an extra round-trip per lecture.
+  const transcripts = await Transcript.find({ lecture: { $in: lectures.map((l) => l._id) } })
+    .select("lecture summaryStatus");
+  const summaryStatusByLecture = new Map(
+    transcripts.map((t) => [t.lecture.toString(), t.summaryStatus])
+  );
+
   const lecturesData = lectures.map((lecture) => {
     const lec = lecture.toObject();
     delete lec.video?.publicId;
 
+    lec.summaryStatus = summaryStatusByLecture.get(lecture._id.toString()) || "none"; // NEW
+
     // Full access: instructor, free course, or enrolled student
-    const hasFullAccess = isInstructor || course.isFree || isEnrolled || lec.isFree;
+    let hasFullAccess = isInstructor || course.isFree || isEnrolled || lec.isFree;
+
+    // NEW — Phase 4: drip content — lock lectures with a future
+    // releaseDate for everyone except the instructor.
+    const isDripLocked = !isInstructor && lec.releaseDate && new Date(lec.releaseDate) > new Date();
+    lec.isDripLocked = !!isDripLocked; // NEW — exposed so the frontend can show "Available on <date>"
+    if (isDripLocked) hasFullAccess = false;
 
     if (!hasFullAccess) {
       lec.video = { url: null, duration: lec.video?.duration ?? 0 };

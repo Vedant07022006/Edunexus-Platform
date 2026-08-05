@@ -6,6 +6,7 @@ import {
   getBestScore,
   getLeaderboard,
   getAttemptDetails,
+  generateWeakSpotReview,
 } from "../controllers/quizAttempt.controller.js";
 import verifyJWT from "../middlewares/auth.middleware.js";
 import { isStudent } from "../middlewares/role.middleware.js";
@@ -44,6 +45,13 @@ router.get(
   verifyJWT,
   isStudent,
   getAttemptDetails
+);
+// NEW — Phase 2
+router.post(
+  "/weak-spots/:attemptId",
+  verifyJWT,
+  isStudent,
+  generateWeakSpotReview
 );
 
 

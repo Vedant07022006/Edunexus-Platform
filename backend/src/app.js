@@ -15,6 +15,11 @@ import paymentRouter from "./routes/payment.routes.js";
 import quizAttemptRouter from "./routes/quizAttempt.routes.js";
 import revenueRouter from "./routes/revenue.routes.js";
 import chatbotRouter from "./routes/chatbot.routes.js"; // NEW
+import reviewRouter from "./routes/review.routes.js"; // NEW — Phase 1: ratings & reviews
+import discussionRouter from "./routes/discussion.routes.js"; // NEW — Phase 3: Q&A
+import couponRouter from "./routes/coupon.routes.js"; // NEW — Phase 4
+import bundleRouter from "./routes/bundle.routes.js"; // NEW — Phase 4
+import reportRouter from "./routes/report.routes.js"; // NEW — Phase 5
 
 import "./models/user.model.js";
 import "./models/course.model.js";
@@ -25,6 +30,11 @@ import "./models/enrollment.model.js";
 import "./models/payment.model.js";
 import "./models/quizAttempt.model.js";
 import "./models/pendingUser.model.js";
+import "./models/review.model.js"; // NEW
+import "./models/discussion.model.js"; // NEW — Phase 3
+import "./models/coupon.model.js"; // NEW — Phase 4
+import "./models/bundle.model.js"; // NEW — Phase 4
+import "./models/report.model.js"; // NEW — Phase 5
 
 const app = express();
 
@@ -84,6 +94,11 @@ app.use("/api/v1/payments",     paymentRouter);
 app.use("/api/v1/quiz-attempts", quizAttemptRouter);
 app.use("/api/v1/revenue",      revenueRouter);  // NEW
 app.use("/api/v1/chatbot",      chatbotRouter);  // NEW
+app.use("/api/v1/reviews",      reviewRouter);   // NEW — Phase 1
+app.use("/api/v1/discussions",  discussionRouter); // NEW — Phase 3
+app.use("/api/v1/coupons",      couponRouter);      // NEW — Phase 4
+app.use("/api/v1/bundles",      bundleRouter);       // NEW — Phase 4
+app.use("/api/v1/reports",      reportRouter);       // NEW — Phase 5
 
 app.use(errorHandler);
 

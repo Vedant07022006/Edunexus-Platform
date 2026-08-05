@@ -43,6 +43,14 @@ const enrollmentSchema = new Schema(
       ref: "Lecture",
       default: null, 
     },
+
+    // NEW: exact playback position (in seconds) within lastWatchedLecture,
+    // so a student resumes exactly where they left off instead of at 0:00.
+    lastWatchedSeconds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );
