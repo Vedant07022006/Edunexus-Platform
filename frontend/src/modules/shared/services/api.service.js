@@ -96,7 +96,7 @@ export const deleteReview         = (courseId)          => api.delete(`/reviews/
 
 // Discussions / Q&A
 export const getLectureComments = (lectureId)        => api.get(`/discussions/lecture/${lectureId}`);
-export const createComment      = (lectureId, data)  => api.post(`/discussions/lecture/${lectureId}`, data);
+export const postComment        = (lectureId, data)  => api.post(`/discussions/lecture/${lectureId}`, data);
 export const deleteComment      = (commentId)        => api.delete(`/discussions/${commentId}`);
 
 // Coupons
