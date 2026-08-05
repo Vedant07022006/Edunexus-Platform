@@ -1,34 +1,34 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext'; // NEW
-import { ProtectedRoute, PublicRoute } from './components/routes/ProtectedRoute';
+import { AuthProvider } from './modules/auth/AuthContext';
+import { ThemeProvider } from './modules/shared/context/ThemeContext';
+import { ProtectedRoute, PublicRoute } from './modules/shared/components/ProtectedRoute';
 
 // Pages
-import LandingPage          from './pages/LandingPage';
-import LoginPage            from './pages/auth/LoginPage';
-import RegisterPage         from './pages/auth/RegisterPage';
-import VerifyOtpPage        from './pages/auth/VerifyOtpPage';
-import ForgotPasswordPage   from './pages/auth/ForgotPasswordPage';
-import ResetPasswordPage    from './pages/auth/ResetPasswordPage';
-import StudentDashboard     from './pages/StudentDashboard';
-import InstructorDashboard  from './pages/InstructorDashboard';
-import CoursesPage          from './pages/CoursesPage';
-import CourseDetailPage     from './pages/CourseDetailPage';
-import LearnPage            from './pages/LearnPage';
-import ProfilePage          from './pages/ProfilePage';
-import CreateCoursePage     from './pages/CreateCoursePage';
-import ManageCoursePage     from './pages/ManageCoursePage';
-import StudentPurchasesPage from './pages/StudentPurchasesPage';   // NEW
-import InstructorRevenuePage from './pages/InstructorRevenuePage'; // NEW
-import QuizPage              from './pages/QuizPage';              // NEW
-import QuizResultPage        from './pages/QuizResultPage';        // NEW (placeholder this slice)
-import CertificatePage       from './pages/CertificatePage';       // NEW — Phase 3
-import LeaderboardPage       from './pages/LeaderboardPage';       // NEW — Phase 3
-import ReportsPage           from './pages/ReportPage';            // NEW — Phase 5 (file: ReportPage.jsx)
-import CourseAnalyticsPage   from './pages/CourseAnalyticsPage';   // NEW — Phase 4
-import BundlesPage           from './pages/BundlePage';            // NEW — Phase 4 (file: BundlePage.jsx)
-import CreateBundlePage      from './pages/CreateBundlePage';      // NEW — Phase 4
+import LandingPage          from './modules/landing/pages/LandingPage';
+import LoginPage            from './modules/auth/pages/LoginPage';
+import RegisterPage         from './modules/auth/pages/RegisterPage';
+import VerifyOtpPage        from './modules/auth/pages/VerifyOtpPage';
+import ForgotPasswordPage   from './modules/auth/pages/ForgotPasswordPage';
+import ResetPasswordPage    from './modules/auth/pages/ResetPasswordPage';
+import StudentDashboard     from './modules/user/pages/StudentDashboard';
+import InstructorDashboard  from './modules/course/pages/InstructorDashboard';
+import CoursesPage          from './modules/course/pages/CoursesPage';
+import CourseDetailPage     from './modules/course/pages/CourseDetailPage';
+import LearnPage            from './modules/lecture/pages/LearnPage';
+import ProfilePage          from './modules/user/pages/ProfilePage';
+import CreateCoursePage     from './modules/course/pages/CreateCoursePage';
+import ManageCoursePage     from './modules/course/pages/ManageCoursePage';
+import StudentPurchasesPage from './modules/user/pages/StudentPurchasesPage';
+import InstructorRevenuePage from './modules/course/pages/InstructorRevenuePage';
+import QuizPage              from './modules/quiz/pages/QuizPage';
+import QuizResultPage        from './modules/quiz/pages/QuizResultPage';
+import CertificatePage       from './modules/certificate/pages/CertificatePage';
+import LeaderboardPage       from './modules/quiz/pages/LeaderboardPage';
+import ReportsPage           from './modules/report/pages/ReportPage';
+import CourseAnalyticsPage   from './modules/course/pages/CourseAnalyticsPage';
+import BundlesPage           from './modules/bundle/pages/BundlePage';
+import CreateBundlePage      from './modules/bundle/pages/CreateBundlePage';
 
 export default function App() {
   return (
@@ -39,9 +39,9 @@ export default function App() {
             position="top-right"
             toastOptions={{
               style: {
-                background:   'var(--color-surface-3)', // was hardcoded '#1e1e35'
-                color:        'var(--color-text)',       // was hardcoded '#e2e8f0'
-                border:       '1px solid var(--color-border)', // was hardcoded rgba(255,255,255,0.08)
+                background:   'var(--color-surface-3)',
+                color:        'var(--color-text)',
+                border:       '1px solid var(--color-border)',
                 borderRadius: '12px',
                 fontSize:     '14px',
               },

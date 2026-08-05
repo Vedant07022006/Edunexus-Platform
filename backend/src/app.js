@@ -5,36 +5,36 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import errorHandler from "./middlewares/error.middleware.js";
-import userRouter from "./routes/user.routes.js";
-import courseRouter from "./routes/course.routes.js";
-import lectureRouter from "./routes/lecture.routes.js";
-import transcriptRouter from "./routes/transcript.routes.js";
-import quizRouter from "./routes/quiz.routes.js";
-import enrollmentRouter from "./routes/enrollment.routes.js";
-import paymentRouter from "./routes/payment.routes.js";
-import quizAttemptRouter from "./routes/quizAttempt.routes.js";
-import revenueRouter from "./routes/revenue.routes.js";
-import chatbotRouter from "./routes/chatbot.routes.js"; // NEW
-import reviewRouter from "./routes/review.routes.js"; // NEW — Phase 1: ratings & reviews
-import discussionRouter from "./routes/discussion.routes.js"; // NEW — Phase 3: Q&A
-import couponRouter from "./routes/coupon.routes.js"; // NEW — Phase 4
-import bundleRouter from "./routes/bundle.routes.js"; // NEW — Phase 4
-import reportRouter from "./routes/report.routes.js"; // NEW — Phase 5
+import userRouter from "./modules/user/user.routes.js";
+import courseRouter from "./modules/course/course.routes.js";
+import lectureRouter from "./modules/lecture/lecture.routes.js";
+import transcriptRouter from "./modules/transcript/transcript.routes.js";
+import quizRouter from "./modules/quiz/quiz.routes.js";
+import enrollmentRouter from "./modules/enrollment/enrollment.routes.js";
+import paymentRouter from "./modules/payment/payment.routes.js";
+import quizAttemptRouter from "./modules/quiz/quizAttempt.routes.js";
+import revenueRouter from "./modules/revenue/revenue.routes.js";
+import chatbotRouter from "./modules/chatbot/chatbot.routes.js";
+import reviewRouter from "./modules/review/review.routes.js";
+import discussionRouter from "./modules/discussion/discussion.routes.js";
+import couponRouter from "./modules/coupon/coupon.routes.js";
+import bundleRouter from "./modules/bundle/bundle.routes.js";
+import reportRouter from "./modules/report/report.routes.js";
 
-import "./models/user.model.js";
-import "./models/course.model.js";
-import "./models/lecture.model.js";
-import "./models/transcript.model.js";
-import "./models/quiz.model.js";
-import "./models/enrollment.model.js";
-import "./models/payment.model.js";
-import "./models/quizAttempt.model.js";
-import "./models/pendingUser.model.js";
-import "./models/review.model.js"; // NEW
-import "./models/discussion.model.js"; // NEW — Phase 3
-import "./models/coupon.model.js"; // NEW — Phase 4
-import "./models/bundle.model.js"; // NEW — Phase 4
-import "./models/report.model.js"; // NEW — Phase 5
+import "./modules/user/user.model.js";
+import "./modules/course/course.model.js";
+import "./modules/lecture/lecture.model.js";
+import "./modules/transcript/transcript.model.js";
+import "./modules/quiz/quiz.model.js";
+import "./modules/enrollment/enrollment.model.js";
+import "./modules/payment/payment.model.js";
+import "./modules/quiz/quizAttempt.model.js";
+import "./modules/user/pendingUser.model.js";
+import "./modules/review/review.model.js";
+import "./modules/discussion/discussion.model.js";
+import "./modules/coupon/coupon.model.js";
+import "./modules/bundle/bundle.model.js";
+import "./modules/report/report.model.js";
 
 const app = express();
 

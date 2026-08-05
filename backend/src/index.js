@@ -3,8 +3,8 @@ dotenv.config();
 
 import app from "./app.js";
 import connectDB from "./db/index.js";
-import { Course } from "./models/course.model.js";
-import { User } from "./models/user.model.js";
+import { Course } from "./modules/course/course.model.js";
+import { User } from "./modules/user/user.model.js";
 
 
 // Archive courses whose instructor was permanently deleted from the DB

@@ -9,7 +9,7 @@ import crypto from 'crypto';
 import app from '../src/app.js';
 import { createUser, bearer } from './helpers/auth.helper.js';
 import { createCourse, createEnrollment, createCompletedPayment } from './helpers/seed.helper.js';
-import { Payment } from '../src/models/payment.model.js';
+import { Payment } from '../src/modules/payment/payment.model.js';
 
 // Helper: compute correct Razorpay HMAC signature
 function makeSignature(orderId, paymentId) {

@@ -3,11 +3,11 @@
  * Creates test courses, lectures, enrollments etc. for use in tests.
  */
 
-import { Course }     from '../../src/models/course.model.js';
-import { Lecture }    from '../../src/models/lecture.model.js';
-import { Enrollment } from '../../src/models/enrollment.model.js';
-import { Payment }    from '../../src/models/payment.model.js';
-import { Coupon }     from '../../src/models/coupon.model.js';
+import { Course }     from '../../src/modules/course/course.model.js';
+import { Lecture }    from '../../src/modules/lecture/lecture.model.js';
+import { Enrollment } from '../../src/modules/enrollment/enrollment.model.js';
+import { Payment }    from '../../src/modules/payment/payment.model.js';
+import { Coupon }     from '../../src/modules/coupon/coupon.model.js';
 
 let _courseCounter = 0;
 
