@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* NEW — enables class-based dark mode (toggle via .dark on <html>)
+   instead of Tailwind v4's default OS-preference-only behavior. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
@@ -12,16 +16,32 @@
   --color-primary-800: #3730a3;
   --color-primary-900: #312e81;
 
-  --color-surface: #0f0f1a;
-  --color-surface-2: #16162a;
-  --color-surface-3: #1e1e35;
-  --color-surface-4: #252540;
-  --color-border: rgba(255,255,255,0.08);
+  /* NEW — these four + border/text now default to LIGHT-theme values.
+     Dark-theme values (identical to what this app looked like before)
+     are applied via the .dark overrides further down. */
+  --color-surface: #f8fafc;
+  --color-surface-2: #f1f5f9;
+  --color-surface-3: #e2e8f0;
+  --color-surface-4: #cbd5e1;
+  --color-border: rgba(15, 23, 42, 0.08);
+  --color-text: #1e293b;
 
   --font-sans: 'Inter', sans-serif;
 
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
+}
+
+/* NEW — dark-theme values for the tokens above. Unchanged from what this
+   app used before the light theme existed, so dark mode looks identical
+   to the original design. */
+.dark {
+  --color-surface: #0f0f1a;
+  --color-surface-2: #16162a;
+  --color-surface-3: #1e1e35;
+  --color-surface-4: #252540;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-text: #e2e8f0;
 }
 
 @layer base {
@@ -33,7 +53,7 @@
 
   body {
     background-color: var(--color-surface);
-    color: #e2e8f0;
+    color: var(--color-text); /* was hardcoded #e2e8f0 — now theme-aware */
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
@@ -44,15 +64,25 @@
 }
 
 @layer utilities {
+  /* NEW — .glass / .glass-strong now default to a light-appropriate tint
+     and switch to the original white-tinted look under .dark. */
   .glass {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(15, 23, 42, 0.03);
     backdrop-filter: blur(20px);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+  }
+  .dark .glass {
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .glass-strong {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.05);
     backdrop-filter: blur(30px);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+  }
+  .dark .glass-strong {
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);
   }
 

@@ -18,7 +18,7 @@ const stats = [
 const features = [
   { icon: Brain, title: 'AI-Powered Quizzes', desc: 'Auto-generated quizzes from video transcripts using LLaMA AI.' },
   { icon: Zap, title: 'Auto Transcripts', desc: 'Every lecture gets a searchable AI transcript via AssemblyAI.' },
-  { icon: Award, title: 'Track Progress', desc: 'Visual progress tracking with completion certificates.' },
+  { icon: Award, title: 'Track Progress', desc: 'Visual progress tracking across every lecture you complete.' },
 ];
 
 export default function LandingPage() {
@@ -58,12 +58,12 @@ export default function LandingPage() {
               <Sparkles size={12} /> AI-Powered Learning Platform
             </span>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight text-white">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-tight text-slate-900 dark:text-white">
               Learn Without
               <span className="gradient-text block">Limits</span>
             </h1>
 
-            <p className="mt-6 text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="mt-6 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
               Master in-demand skills with AI-curated courses, auto-generated quizzes, and real-time progress tracking.
               Built for the next generation of learners.
             </p>
@@ -83,7 +83,7 @@ export default function LandingPage() {
                 value={query}
                 onChange={e => { setQuery(e.target.value); if (!e.target.value) setSearchResults(null); }}
                 placeholder="Search any topic, skill, or course..."
-                className="w-full glass border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all"
+                className="w-full glass border border-slate-900/10 dark:border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all"
               />
             </div>
             <Button type="submit" size="lg" loading={searching}>
@@ -115,7 +115,7 @@ export default function LandingPage() {
           className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4"
         >
           {stats.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="glass rounded-2xl p-6 text-center border border-white/[0.06] card-hover">
+            <div key={label} className="glass rounded-2xl p-6 text-center border border-slate-900/[0.06] dark:border-white/[0.06] card-hover">
               <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center mx-auto mb-3">
                 <Icon size={18} className="text-white" />
               </div>
@@ -129,7 +129,7 @@ export default function LandingPage() {
       {/* Search Results */}
       {searchResults && (
         <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-16">
-          <h2 className="text-xl font-bold text-white mb-6">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
             {searchResults.length > 0 ? `Found ${searchResults.length} results for "${query}"` : `No results for "${query}"`}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -143,7 +143,7 @@ export default function LandingPage() {
         <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-20">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-white">Featured Courses</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Featured Courses</h2>
               <p className="text-sm text-slate-500 mt-1">Hand-picked courses to get you started</p>
             </div>
             <Link to="/courses" className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1 transition-colors">
@@ -162,8 +162,8 @@ export default function LandingPage() {
       {/* Features */}
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-20">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white">Why EduNexus?</h2>
-          <p className="text-slate-400 mt-3">Everything you need to learn and grow</p>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Why EduNexus?</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-3">Everything you need to learn and grow</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map(({ icon: Icon, title, desc }, i) => (
@@ -173,13 +173,13 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="glass rounded-2xl p-6 border border-white/[0.06] card-hover"
+              className="glass rounded-2xl p-6 border border-slate-900/[0.06] dark:border-white/[0.06] card-hover"
             >
               <div className="w-12 h-12 gradient-primary rounded-2xl flex items-center justify-center mb-4">
                 <Icon size={22} className="text-white" />
               </div>
-              <h3 className="font-semibold text-white mb-2">{title}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{title}</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{desc}</p>
             </motion.div>
           ))}
         </div>
@@ -189,8 +189,8 @@ export default function LandingPage() {
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto mb-20">
         <div className="glass rounded-3xl p-10 text-center border border-primary-500/20 gradient-card relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary-600/10 to-purple-600/10 pointer-events-none" />
-          <h2 className="text-3xl font-bold text-white mb-3 relative">Ready to start learning?</h2>
-          <p className="text-slate-400 mb-6 relative">Join thousands of students already learning on EduNexus.</p>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3 relative">Ready to start learning?</h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6 relative">Join thousands of students already learning on EduNexus.</p>
           <Link to="/register">
             <Button size="xl" className="glow">
               Get Started for Free <ArrowRight size={18} />

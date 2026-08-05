@@ -58,8 +58,8 @@ export default function RegisterPage() {
           <span className="font-bold text-xl gradient-text">EduNexus</span>
         </div>
 
-        <h2 className="text-3xl font-bold text-white mb-1">Create your account</h2>
-        <p className="text-slate-400 text-sm mb-8">Join thousands of learners worldwide</p>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Create your account</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mb-8">Join thousands of learners worldwide</p>
 
         {/* Role Selector */}
         <div className="grid grid-cols-2 gap-3 mb-6">
@@ -71,11 +71,11 @@ export default function RegisterPage() {
               className={`p-4 rounded-xl border text-left transition-all ${
                 form.role === value
                   ? 'border-primary-500 bg-primary-500/10'
-                  : 'border-white/10 glass hover:border-white/20'
+                  : 'border-slate-900/10 dark:border-white/10 glass hover:border-slate-900/15 dark:hover:border-white/20'
               }`}
             >
               <Icon size={20} className={form.role === value ? 'text-primary-400' : 'text-slate-500'} />
-              <p className={`mt-2 text-sm font-medium ${form.role === value ? 'text-primary-300' : 'text-slate-300'}`}>{label}</p>
+              <p className={`mt-2 text-sm font-medium ${form.role === value ? 'text-primary-300' : 'text-slate-700 dark:text-slate-300'}`}>{label}</p>
               <p className="text-xs text-slate-500">{desc}</p>
             </button>
           ))}

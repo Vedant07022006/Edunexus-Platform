@@ -120,6 +120,36 @@ const userSchema = new Schema(
       type: Date,
       default: null,
     },
+
+    // NEW — Phase 3: daily learning streak
+    currentStreak: {
+      type: Number,
+      default: 0,
+    },
+    longestStreak: {
+      type: Number,
+      default: 0,
+    },
+    lastActiveDate: {
+      type: Date,
+      default: null,
+    },
+
+    // NEW — Phase 5: optional 2FA on login, opt-in and off by default
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    loginOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    loginOtpExpiry: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   { timestamps: true }
 );

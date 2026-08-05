@@ -4,23 +4,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   getCourseById, publishCourse, deleteCourse,
   getInstructorLectures, addLecture, deleteLecture,
-  generateTranscript, generateQuiz, deleteTranscript, deleteQuiz,
+  generateTranscript, generateQuiz, generateSummary, deleteTranscript, deleteQuiz,
   createManualQuiz, getAiQuota, getQuizByLecture, updateManualQuiz,
 } from '../services/api.service';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import CouponPanel from '../components/lecture/CouponPanel'; // NEW — Phase 4
+import PaymentsPanel from '../components/lecture/PaymentPanel'; // NEW — Phase 5
 import {
   BookOpen, Upload, Trash2, Plus, Eye, EyeOff,
   Brain, FileText, ArrowLeft, Film, CheckCircle2,
   AlertCircle, Loader2, Video, RefreshCw, Lock,
   X, AlertTriangle, PencilLine, Zap, CircleSlash,
+  Sparkles, BarChart3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 const STATUS_COLOR = {
-  pending:          'text-slate-400',
+  pending:          'text-slate-600 dark:text-slate-400',
   transcribing:     'text-yellow-400',
   generating_quiz:  'text-blue-400',
   completed:        'text-emerald-400',
@@ -151,37 +154,37 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 20 }}
-        className="rounded-2xl border border-white/10 w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+        className="rounded-2xl border border-slate-900/10 dark:border-white/10 w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
         style={{ background: '#13131f' }}
       >
         {/* Header */}
-        <div className="p-5 border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
+        <div className="p-5 border-b border-slate-900/[0.06] dark:border-white/[0.06] flex items-center justify-between flex-shrink-0">
           <div>
-            <h3 className="text-base font-bold text-white">{isEditMode ? 'Edit Quiz' : 'Create Quiz Manually'}</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">{isEditMode ? 'Edit Quiz' : 'Create Quiz Manually'}</h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate max-w-md">{lectureTitle}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/10 dark:hover:bg-white/10 transition-all">
             <X size={16} />
           </button>
         </div>
 
         {/* Progress summary */}
-        <div className="px-5 py-3 border-b border-white/[0.06] flex-shrink-0 bg-white/[0.02]">
+        <div className="px-5 py-3 border-b border-slate-900/[0.06] dark:border-white/[0.06] flex-shrink-0 bg-slate-900/[0.02] dark:bg-white/[0.02]">
           <div className="flex items-center justify-between text-xs mb-2">
-            <span className="text-slate-400">{filledCount}/{TOTAL_QUESTIONS} questions filled</span>
+            <span className="text-slate-600 dark:text-slate-400">{filledCount}/{TOTAL_QUESTIONS} questions filled</span>
             <div className="flex gap-3">
-              <span className={counts.easy === EASY_TARGET ? 'text-emerald-400' : 'text-slate-400'}>
+              <span className={counts.easy === EASY_TARGET ? 'text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
                 Easy: {counts.easy}/{EASY_TARGET} {counts.easy === EASY_TARGET && '✅'}
               </span>
-              <span className={counts.medium === MEDIUM_TARGET ? 'text-emerald-400' : 'text-slate-400'}>
+              <span className={counts.medium === MEDIUM_TARGET ? 'text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
                 Medium: {counts.medium}/{MEDIUM_TARGET} {counts.medium === MEDIUM_TARGET && '✅'}
               </span>
-              <span className={counts.hard === HARD_TARGET ? 'text-emerald-400' : 'text-slate-400'}>
+              <span className={counts.hard === HARD_TARGET ? 'text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
                 Hard: {counts.hard}/{HARD_TARGET} {counts.hard === HARD_TARGET && '✅'}
               </span>
             </div>
           </div>
-          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-slate-900/10 dark:bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full gradient-primary rounded-full transition-all duration-300"
               style={{ width: `${(filledCount / TOTAL_QUESTIONS) * 100}%` }}
@@ -193,7 +196,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
         <div className="flex flex-1 overflow-hidden">
 
           {/* Question number grid */}
-          <div className="w-40 border-r border-white/[0.06] p-3 overflow-y-auto flex-shrink-0">
+          <div className="w-40 border-r border-slate-900/[0.06] dark:border-white/[0.06] p-3 overflow-y-auto flex-shrink-0">
             <div className="grid grid-cols-4 gap-1.5">
               {questions.map((q, i) => {
                 const isFilled = q.questionText.trim() && q.options.every((o) => o.trim()) && q.correctAnswer;
@@ -206,7 +209,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
                         ? 'gradient-primary text-white'
                         : isFilled
                         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-white/5 text-slate-500 border border-white/10'
+                        : 'bg-slate-900/5 dark:bg-white/5 text-slate-500 border border-slate-900/10 dark:border-white/10'
                     }`}
                   >
                     {i + 1}
@@ -219,11 +222,11 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
           {/* Question form */}
           <div className="flex-1 p-5 overflow-y-auto space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-white">Question {activeIndex + 1}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Question {activeIndex + 1}</p>
               <select
                 value={current.difficulty}
                 onChange={(e) => updateQuestion(activeIndex, 'difficulty', e.target.value)}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300"
+                className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-700 dark:text-slate-300"
                 style={{ background: '#1a1d2e' }}
               >
                 <option value="easy">Easy</option>
@@ -237,7 +240,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
               onChange={(e) => updateQuestion(activeIndex, 'questionText', e.target.value)}
               placeholder="Enter question text..."
               rows={2}
-              className="w-full px-3 py-2.5 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none"
+              className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none"
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -256,7 +259,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
                     value={opt}
                     onChange={(e) => updateOption(activeIndex, i, e.target.value)}
                     placeholder={`Option ${i + 1}`}
-                    className="flex-1 px-3 py-2 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50"
+                    className="flex-1 px-3 py-2 text-sm rounded-xl bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50"
                   />
                 </div>
               ))}
@@ -268,7 +271,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
               onChange={(e) => updateQuestion(activeIndex, 'explanation', e.target.value)}
               placeholder="Short explanation for the correct answer..."
               rows={2}
-              className="w-full px-3 py-2.5 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none"
+              className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none"
             />
 
             <div className="flex justify-between pt-2">
@@ -291,7 +294,7 @@ function ManualQuizModal({ lectureId, lectureTitle, onClose, onSaved, initialQue
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/[0.06] flex items-center justify-between flex-shrink-0">
+        <div className="p-4 border-t border-slate-900/[0.06] dark:border-white/[0.06] flex items-center justify-between flex-shrink-0">
           <p className="text-xs text-slate-500">
             {isComplete ? '✅ All questions complete — ready to save' : 'Fill all 20 questions to save'}
           </p>
@@ -323,7 +326,7 @@ function DeleteCourseModal({ course, onClose, onConfirm, deleting }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="rounded-2xl border border-white/10 w-full max-w-md p-6 shadow-2xl"
+        className="rounded-2xl border border-slate-900/10 dark:border-white/10 w-full max-w-md p-6 shadow-2xl"
         style={{ background: '#13131f' }}
       >
         <div className="flex items-start gap-3 mb-4">
@@ -331,15 +334,15 @@ function DeleteCourseModal({ course, onClose, onConfirm, deleting }) {
             <AlertTriangle size={18} className="text-red-400" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">Delete this course?</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete this course?</h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate max-w-xs">{course.title}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/10 dark:hover:bg-white/10 transition-all">
             <X size={16} />
           </button>
         </div>
 
-        <div className="space-y-2 text-sm text-slate-400 mb-5">
+        <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400 mb-5">
           <p>This course will be removed from listings and search, and you won't be able to add new lectures to it.</p>
           {hasStudents ? (
             <p className="text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-xs">
@@ -380,7 +383,7 @@ export default function ManageCoursePage() {
   const [loadError, setLoadError] = useState('');
 
   const [addingLecture, setAddingLecture]       = useState(false);
-  const [lectureForm, setLectureForm]           = useState({ title: '', order: '', isFree: false });
+  const [lectureForm, setLectureForm]           = useState({ title: '', order: '', isFree: false, releaseDate: '' });
   const [videoFile, setVideoFile]               = useState(null);
   const [uploadingLecture, setUploadingLecture] = useState(false);
   const [uploadProgress, setUploadProgress]     = useState(0);
@@ -469,6 +472,7 @@ export default function ManageCoursePage() {
       fd.append('title',  lectureForm.title.trim());
       fd.append('order',  lectureForm.order);
       fd.append('isFree', lectureForm.isFree);
+      if (lectureForm.releaseDate) fd.append('releaseDate', lectureForm.releaseDate); // NEW — Phase 4
       fd.append('video',  videoFile);
 
       const { data } = await addLecture(courseId, fd);
@@ -477,7 +481,7 @@ export default function ManageCoursePage() {
 
       setTimeout(() => {
         setLectures(p => [...p, data.data].sort((a, b) => a.order - b.order));
-        setLectureForm({ title: '', order: '', isFree: false });
+        setLectureForm({ title: '', order: '', isFree: false, releaseDate: '' });
         setVideoFile(null);
         setAddingLecture(false);
         setUploadProgress(0);
@@ -516,6 +520,24 @@ export default function ManageCoursePage() {
       ));
     } finally {
       setActionState(p => ({ ...p, [lectureId]: null }));
+    }
+  };
+
+  // ── Generate Summary (AI) — NEW, Phase 2 ────────────────────────────────────
+  const handleSummary = async (lectureId) => {
+    setActionState(p => ({ ...p, [`s_${lectureId}`]: 'summarizing' }));
+
+    const tid = toast.loading('Generating key takeaways with AI...');
+    try {
+      await generateSummary(lectureId);
+      toast.dismiss(tid);
+      toast.success('Summary generated ✨');
+      await loadData();
+    } catch (err) {
+      toast.dismiss(tid);
+      toast.error(err.response?.data?.message || 'Summary generation failed');
+    } finally {
+      setActionState(p => ({ ...p, [`s_${lectureId}`]: null }));
     }
   };
 
@@ -578,7 +600,7 @@ export default function ManageCoursePage() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-slate-400 text-sm">Loading course...</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">Loading course...</p>
       </div>
     </div>
   );
@@ -588,13 +610,13 @@ export default function ManageCoursePage() {
     <div className="min-h-screen">
       <Navbar />
       <div className="pt-24 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <button onClick={() => navigate('/instructor')} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors">
+        <button onClick={() => navigate('/instructor')} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors">
           <ArrowLeft size={16} /> Back
         </button>
         <div className="glass rounded-2xl p-12 text-center border border-red-500/20">
           <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Failed to load course</h2>
-          <p className="text-slate-400 text-sm mb-6">{loadError}</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Failed to load course</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">{loadError}</p>
           <div className="flex gap-3 justify-center">
             <Button onClick={() => window.location.reload()}>Retry</Button>
             <Button variant="secondary" onClick={() => navigate('/instructor')}>Dashboard</Button>
@@ -611,7 +633,7 @@ export default function ManageCoursePage() {
 
         <button
           onClick={() => navigate('/instructor')}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors group"
+          className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors group"
         >
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
           Back to Dashboard
@@ -622,7 +644,7 @@ export default function ManageCoursePage() {
             {/* ── Course Header ── */}
             <motion.div
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              className="glass rounded-2xl p-6 border border-white/[0.06] mb-6"
+              className="glass rounded-2xl p-6 border border-slate-900/[0.06] dark:border-white/[0.06] mb-6"
             >
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-0">
@@ -632,16 +654,19 @@ export default function ManageCoursePage() {
                     }`}>
                       {course.isPublished ? 'Published' : 'Draft'}
                     </span>
-                    <span className="text-xs text-slate-500 bg-white/5 px-2 py-0.5 rounded-full">{course.category}</span>
+                    <span className="text-xs text-slate-500 bg-slate-900/5 dark:bg-white/5 px-2 py-0.5 rounded-full">{course.category}</span>
                   </div>
-                  <h1 className="text-2xl font-bold text-white truncate">{course.title}</h1>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white truncate">{course.title}</h1>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
                     <span className="flex items-center gap-1.5"><Film size={13} className="text-primary-400" />{lectures.length} lecture{lectures.length !== 1 ? 's' : ''}</span>
                     <span className="flex items-center gap-1.5"><BookOpen size={13} className="text-primary-400" />{course.totalEnrollments || 0} enrolled</span>
                     <span className="text-slate-500">{course.isFree ? 'Free' : `₹${course.price}`}</span>
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => navigate(`/instructor/courses/${courseId}/analytics`)} title="View analytics">
+                    <BarChart3 size={14} />
+                  </Button>
                   <Button variant="secondary" size="sm" onClick={loadData} title="Refresh lectures">
                     <RefreshCw size={14} />
                   </Button>
@@ -694,7 +719,7 @@ export default function ManageCoursePage() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
+              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 flex-wrap">
                 <span className="flex items-center gap-1"><Upload size={11} /> Upload</span>
                 <span className="text-slate-600">→</span>
                 <span className="flex items-center gap-1"><FileText size={11} /> Transcript</span>
@@ -714,10 +739,10 @@ export default function ManageCoursePage() {
             {/* ── Lectures ── */}
             <motion.div
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
-              className="glass rounded-2xl border border-white/[0.06] overflow-hidden"
+              className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] overflow-hidden"
             >
-              <div className="p-5 border-b border-white/[0.06] flex items-center justify-between">
-                <h2 className="font-semibold text-white flex items-center gap-2">
+              <div className="p-5 border-b border-slate-900/[0.06] dark:border-white/[0.06] flex items-center justify-between">
+                <h2 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                   <Film size={16} className="text-primary-400" />
                   Lectures <span className="text-xs text-slate-500 font-normal ml-1">({lectures.length})</span>
                 </h2>
@@ -731,10 +756,10 @@ export default function ManageCoursePage() {
                 {addingLecture && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }} className="border-b border-white/[0.06] bg-primary-500/5 overflow-hidden"
+                    exit={{ opacity: 0, height: 0 }} className="border-b border-slate-900/[0.06] dark:border-white/[0.06] bg-primary-500/5 overflow-hidden"
                   >
                     <form onSubmit={handleAddLecture} className="p-5 space-y-4">
-                      <h3 className="text-sm font-semibold text-white">New Lecture</h3>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">New Lecture</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input label="Title *" placeholder="e.g. Introduction to React" value={lectureForm.title}
                           onChange={e => setLectureForm(p => ({ ...p, title: e.target.value }))} required />
@@ -742,12 +767,12 @@ export default function ManageCoursePage() {
                           onChange={e => setLectureForm(p => ({ ...p, order: e.target.value }))} required />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                           Video * <span className="text-slate-500 text-xs">(MP4/WebM/MKV — max 500MB)</span>
                         </label>
                         <label className={`flex items-center gap-3 px-4 py-3.5 glass border rounded-xl cursor-pointer transition-all text-sm ${
                           videoFile ? 'border-primary-500/60 text-primary-300 bg-primary-500/10'
-                                    : 'border-white/10 text-slate-400 hover:border-primary-500/50'
+                                    : 'border-slate-900/10 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-primary-500/50'
                         }`}>
                           <Video size={16} />
                           <span className="truncate">{videoFile ? videoFile.name : 'Choose video...'}</span>
@@ -756,19 +781,26 @@ export default function ManageCoursePage() {
                             onChange={e => setVideoFile(e.target.files[0] || null)} />
                         </label>
                       </div>
-                      <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+                      <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                         <input type="checkbox" checked={lectureForm.isFree}
                           onChange={e => setLectureForm(p => ({ ...p, isFree: e.target.checked }))}
                           className="w-4 h-4 accent-primary-500 rounded" />
                         Free preview
                       </label>
+                      {/* NEW — Phase 4: drip content release date */}
+                      <div>
+                        <label className="text-xs text-slate-500 mb-1 block">Release date (optional — drip content)</label>
+                        <input type="date" value={lectureForm.releaseDate}
+                          onChange={e => setLectureForm(p => ({ ...p, releaseDate: e.target.value }))}
+                          className="w-full glass border border-slate-900/10 dark:border-white/10 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-primary-500 transition-all" />
+                      </div>
                       {uploadingLecture && (
                         <div className="space-y-1.5">
-                          <div className="flex justify-between text-xs text-slate-400">
+                          <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
                             <span className="flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" />Uploading... may take 1-2 min</span>
                             <span>{Math.round(uploadProgress)}%</span>
                           </div>
-                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-2 bg-slate-900/10 dark:bg-white/10 rounded-full overflow-hidden">
                             <motion.div className="h-full gradient-primary rounded-full"
                               animate={{ width: `${uploadProgress}%` }} transition={{ duration: 0.4 }} />
                           </div>
@@ -793,7 +825,7 @@ export default function ManageCoursePage() {
                 {lectures.length === 0 ? (
                   <div className="text-center py-12 text-slate-500">
                     <Film size={36} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-sm font-medium text-slate-400">No lectures yet</p>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No lectures yet</p>
                     <p className="text-xs mt-1">Click "Add Lecture" to upload your first video.</p>
                   </div>
                 ) : lectures.map((lec) => {
@@ -806,7 +838,7 @@ export default function ManageCoursePage() {
                   return (
                     <motion.div key={lec._id}
                       initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                      className="glass rounded-xl p-4 border border-white/[0.06] hover:border-white/10 transition-colors"
+                      className="glass rounded-xl p-4 border border-slate-900/[0.06] dark:border-white/[0.06] hover:border-slate-900/10 dark:hover:border-white/10 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -814,9 +846,9 @@ export default function ManageCoursePage() {
                             {lec.order}
                           </span>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{lec.title}</p>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{lec.title}</p>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className={`text-xs font-medium ${STATUS_COLOR[lec.processingStatus] || 'text-slate-400'}`}>
+                              <span className={`text-xs font-medium ${STATUS_COLOR[lec.processingStatus] || 'text-slate-600 dark:text-slate-400'}`}>
                                 {STATUS_LABEL[lec.processingStatus] || lec.processingStatus}
                               </span>
                               <span className="text-slate-600 text-xs">·</span>
@@ -839,7 +871,7 @@ export default function ManageCoursePage() {
                             className={`flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border ${
                               hasTranscript
                                 ? 'text-emerald-400 border-emerald-500/20 cursor-default opacity-70'
-                                : 'text-slate-300 hover:text-primary-400 border-white/10 hover:border-primary-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
+                                : 'text-slate-700 dark:text-slate-300 hover:text-primary-400 border-slate-900/10 dark:border-white/10 hover:border-primary-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
                             }`}
                           >
                             {busy ? <Loader2 size={12} className="animate-spin" />
@@ -847,6 +879,36 @@ export default function ManageCoursePage() {
                               : <FileText size={12} />}
                             {busy ? 'Working...' : 'Transcript'}
                           </button>
+
+                          {/* AI Summary button — NEW, Phase 2 */}
+                          {(() => {
+                            const summaryBusy = actionState[`s_${lec._id}`] === 'summarizing';
+                            const summaryDone = lec.summaryStatus === 'completed';
+                            return (
+                              <button
+                                onClick={() => hasTranscript && !summaryDone && !summaryBusy && handleSummary(lec._id)}
+                                disabled={!hasTranscript || summaryDone || summaryBusy}
+                                title={
+                                  !hasTranscript ? 'Generate transcript first'
+                                  : summaryDone ? 'Summary generated'
+                                  : 'Generate key-takeaway summary with AI'
+                                }
+                                className={`flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border ${
+                                  !hasTranscript
+                                    ? 'text-slate-600 border-slate-900/5 dark:border-white/5 cursor-not-allowed opacity-40'
+                                    : summaryDone
+                                      ? 'text-emerald-400 border-emerald-500/20 cursor-default opacity-70'
+                                      : 'text-slate-700 dark:text-slate-300 hover:text-yellow-400 border-slate-900/10 dark:border-white/10 hover:border-yellow-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
+                                }`}
+                              >
+                                {summaryBusy ? <Loader2 size={12} className="animate-spin" />
+                                  : !hasTranscript ? <Lock size={12} />
+                                  : summaryDone ? <CheckCircle2 size={12} />
+                                  : <Sparkles size={12} />}
+                                {summaryBusy ? 'Working...' : 'Summary'}
+                              </button>
+                            );
+                          })()}
 
                           {/* AI Quiz button */}
                           <button
@@ -860,12 +922,12 @@ export default function ManageCoursePage() {
                             }
                             className={`flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border ${
                               !hasTranscript
-                                ? 'text-slate-600 border-white/5 cursor-not-allowed opacity-40'
+                                ? 'text-slate-600 border-slate-900/5 dark:border-white/5 cursor-not-allowed opacity-40'
                                 : isComplete
                                   ? 'text-emerald-400 border-emerald-500/20 cursor-default opacity-70'
                                   : aiLimitReached
-                                    ? 'text-slate-600 border-white/5 cursor-not-allowed opacity-40'
-                                    : 'text-slate-300 hover:text-purple-400 border-white/10 hover:border-purple-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
+                                    ? 'text-slate-600 border-slate-900/5 dark:border-white/5 cursor-not-allowed opacity-40'
+                                    : 'text-slate-700 dark:text-slate-300 hover:text-purple-400 border-slate-900/10 dark:border-white/10 hover:border-purple-500/40 disabled:opacity-40 disabled:cursor-not-allowed'
                             }`}
                           >
                             {quizBusy ? <Loader2 size={12} className="animate-spin" />
@@ -881,7 +943,7 @@ export default function ManageCoursePage() {
                             <button
                               onClick={() => setManualQuizLecture(lec)}
                               title="Create quiz manually (20 questions)"
-                              className="flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border text-slate-300 hover:text-blue-400 border-white/10 hover:border-blue-500/40"
+                              className="flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border text-slate-700 dark:text-slate-300 hover:text-blue-400 border-slate-900/10 dark:border-white/10 hover:border-blue-500/40"
                             >
                               <PencilLine size={12} /> Add Manually
                             </button>
@@ -893,7 +955,7 @@ export default function ManageCoursePage() {
                               onClick={() => handleOpenEditQuiz(lec)}
                               disabled={loadingEditQuiz}
                               title="Edit existing quiz questions"
-                              className="flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border text-slate-300 hover:text-yellow-400 border-white/10 hover:border-yellow-500/40 disabled:opacity-50"
+                              className="flex items-center gap-1 px-2.5 py-1.5 glass rounded-lg text-xs font-medium transition-all border text-slate-700 dark:text-slate-300 hover:text-yellow-400 border-slate-900/10 dark:border-white/10 hover:border-yellow-500/40 disabled:opacity-50"
                             >
                               {loadingEditQuiz ? <Loader2 size={12} className="animate-spin" /> : <PencilLine size={12} />}
                               Edit Quiz
@@ -910,7 +972,7 @@ export default function ManageCoursePage() {
 
                           {/* Delete */}
                           <button onClick={() => handleDeleteLecture(lec._id)} title="Delete"
-                            className="p-1.5 glass rounded-lg text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/20 transition-all">
+                            className="p-1.5 glass rounded-lg text-slate-600 dark:text-slate-400 hover:text-red-400 border border-slate-900/5 dark:border-white/5 hover:border-red-500/20 transition-all">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -920,6 +982,12 @@ export default function ManageCoursePage() {
                 })}
               </div>
             </motion.div>
+
+            {/* Coupons — NEW, Phase 4 */}
+            <CouponPanel courseId={courseId} />
+
+            {/* Payments & Refunds — NEW, Phase 5 */}
+            <PaymentsPanel courseId={courseId} />
           </>
         )}
       </div>

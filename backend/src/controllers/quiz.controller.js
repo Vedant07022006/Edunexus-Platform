@@ -180,7 +180,7 @@ const generateQuestionsWithAi = async (transcriptText, isDifferent = false) => {
       messages: [{ role: "user", content: buildPrompt(trimmed, isDifferent) }],
       model: "llama-3.3-70b-versatile",
       temperature: 0.6,
-      max_tokens: 6000,
+      max_tokens: 8000,
     });
 
     const text = completion.choices[0]?.message?.content || "";
@@ -232,7 +232,7 @@ const runQuizGeneration = async (quizId, lectureTitle, transcriptText, isDiffere
       status:         "ready",
       generatedByAi:  true,
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 };
 
@@ -255,7 +255,7 @@ export const generateQuiz = asyncHandler(async (req, res) => {
   const quiz = await Quiz.findOneAndUpdate(
     { lecture: lectureId },
     { lecture: lectureId, course: lecture.course._id, status: "generating", questions: [] },
-    { upsert: true, new: true, runValidators: true }
+    { upsert: true, returnDocument: 'after', runValidators: true }
   );
 
   const finalQuiz = await runQuizGeneration(quiz._id, lecture.title, transcript.transcriptText);

@@ -44,6 +44,19 @@ const transcriptSchema = new Schema(
       enum: ["processing", "completed", "failed"],
       default: "processing",
     },
+
+    // NEW — Phase 2: AI-generated key-takeaway bullets, derived from
+    // transcriptText. Generated once (instructor-triggered) and cached
+    // here rather than regenerated per student view.
+    summary: {
+      type: [String],
+      default: [],
+    },
+    summaryStatus: {
+      type: String,
+      enum: ["none", "generating", "completed", "failed"],
+      default: "none",
+    },
   },
   { timestamps: true }
 );

@@ -25,8 +25,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-xl glass border border-white/[0.06] text-slate-400
-                   hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        className="p-2 rounded-xl glass border border-slate-900/[0.06] dark:border-white/[0.06] text-slate-600 dark:text-slate-400
+                   hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ChevronLeft size={16} />
       </button>
@@ -42,7 +42,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
             className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${
               page === currentPage
                 ? 'gradient-primary text-white'
-                : 'glass border border-white/[0.06] text-slate-400 hover:text-white'
+                : 'glass border border-slate-900/[0.06] dark:border-white/[0.06] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             {page}
@@ -54,8 +54,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-xl glass border border-white/[0.06] text-slate-400
-                   hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        className="p-2 rounded-xl glass border border-slate-900/[0.06] dark:border-white/[0.06] text-slate-600 dark:text-slate-400
+                   hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <ChevronRight size={16} />
       </button>

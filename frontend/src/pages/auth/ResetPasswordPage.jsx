@@ -74,8 +74,8 @@ export default function ResetPasswordPage() {
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle size={40} className="text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Link expired or invalid</h2>
-          <p className="text-slate-400 text-sm mb-8 leading-relaxed">{tokenError}</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Link expired or invalid</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-sm mb-8 leading-relaxed">{tokenError}</p>
           <div className="space-y-3">
             <Link
               to="/forgot-password"
@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
             </Link>
             <Link
               to="/login"
-              className="block w-full text-center px-4 py-3 text-sm text-slate-400 hover:text-white transition-colors"
+              className="block w-full text-center px-4 py-3 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               Back to login
             </Link>
@@ -107,8 +107,8 @@ export default function ResetPasswordPage() {
           <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={40} className="text-emerald-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Password reset!</h2>
-          <p className="text-slate-400 text-sm mb-8">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Password reset!</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-sm mb-8">
             Your password has been updated successfully.
             <br />
             Redirecting you to login in 3 seconds…
@@ -136,14 +136,14 @@ export default function ResetPasswordPage() {
             <Zap size={28} className="text-white" />
           </div>
           <h1 className="text-4xl font-bold gradient-text mb-4">EduNexus</h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-slate-600 dark:text-slate-400 text-lg">
             Create a new secure password<br />for your account.
           </p>
-          <div className="mt-10 p-4 glass rounded-2xl border border-white/[0.06] text-left max-w-xs mx-auto space-y-2">
+          <div className="mt-10 p-4 glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] text-left max-w-xs mx-auto space-y-2">
             {['At least 8 characters', 'Mix of letters & numbers', 'Different from old password'].map(tip => (
               <div key={tip} className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary-400 flex-shrink-0" />
-                <p className="text-xs text-slate-400">{tip}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{tip}</p>
               </div>
             ))}
           </div>
@@ -166,8 +166,8 @@ export default function ResetPasswordPage() {
             <span className="font-bold text-xl gradient-text">EduNexus</span>
           </div>
 
-          <h2 className="text-3xl font-bold text-white mb-1">Set new password</h2>
-          <p className="text-slate-400 text-sm mb-8">
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Set new password</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-sm mb-8">
             Choose a strong password for your EduNexus account.
           </p>
 
@@ -187,7 +187,7 @@ export default function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPass(v => !v)}
-                className="absolute right-3 top-[38px] text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute right-3 top-[38px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                 tabIndex={-1}
               >
                 {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -208,7 +208,7 @@ export default function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirm(v => !v)}
-                className="absolute right-3 top-[38px] text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute right-3 top-[38px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                 tabIndex={-1}
               >
                 {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -225,7 +225,7 @@ export default function ResetPasswordPage() {
                       className={`h-1 flex-1 rounded-full transition-all ${
                         i < getStrength(form.newPassword)
                           ? strengthColor(getStrength(form.newPassword))
-                          : 'bg-white/10'
+                          : 'bg-slate-900/10 dark:bg-white/10'
                       }`}
                     />
                   ))}
@@ -267,7 +267,7 @@ function getStrength(password) {
 }
 
 function strengthColor(score) {
-  return ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500'][score - 1] || 'bg-white/10';
+  return ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500'][score - 1] || 'bg-slate-900/10 dark:bg-white/10';
 }
 
 function strengthLabel(score) {

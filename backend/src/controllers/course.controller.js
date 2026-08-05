@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -7,7 +6,8 @@ import { User } from "../models/user.model.js";
 import { Enrollment } from "../models/enrollment.model.js";
 import { Lecture } from "../models/lecture.model.js";
 import { uploadThumbnailOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
-
+import Groq from "groq-sdk"; // NEW — Phase 2: AI-assisted course description/tags
+import mongoose from "mongoose";
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
 const validateObjectId = (id, name = "Resource") => {
@@ -36,6 +36,86 @@ const getOwnedCourse = async (courseId, instructorId) => {
 };
 
 // ─── Controllers ───────────────────────────────────────────────────────────────
+
+// ─── AI-assist helpers (NEW — Phase 2) ─────────────────────────────────────────
+
+const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+const parseAiAssistResponse = (raw) => {
+  const cleaned = raw.replace(/```json|```/g, "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new ApiError(500, "AI returned invalid content. Please try again or write it manually.");
+  }
+  if (
+    !parsed ||
+    typeof parsed.description !== "string" ||
+    !Array.isArray(parsed.tags)
+  ) {
+    throw new ApiError(500, "AI did not return a valid description/tags pair. Please try again.");
+  }
+  return {
+    description: parsed.description.trim(),
+    tags: parsed.tags
+      .map((t) => (typeof t === "string" ? t.trim().toLowerCase() : ""))
+      .filter(Boolean)
+      .slice(0, 8),
+  };
+};
+
+const buildAiAssistPrompt = (title, notes) => `
+You are helping an instructor draft their online course listing.
+
+Course title: "${title}"
+Instructor's rough notes on what the course covers: "${notes || "(none provided — infer from the title)"}"
+
+Write:
+1. A polished, engaging 2-4 sentence course description suitable for a course marketplace listing.
+2. 5 to 8 relevant lowercase tags (single words or short phrases) for search/discovery.
+
+Rules:
+- Return ONLY a JSON object, nothing else — no markdown, no preamble.
+- Format exactly: {"description": "...", "tags": ["tag1", "tag2", ...]}
+- The description should sound professional and appealing to prospective students, not generic filler.
+`.trim();
+
+// ─── Controllers ───────────────────────────────────────────────────────────────
+
+// NEW — Phase 2: stateless AI-assist endpoint. Returns a draft
+// description + tags for the instructor to review/edit before creating
+// the course — nothing is saved here.
+export const generateCourseAiAssist = asyncHandler(async (req, res) => {
+  const { title, notes } = req.body;
+
+  if (!title || title.trim().length < 5) {
+    throw new ApiError(400, "Provide a course title (at least 5 characters) first");
+  }
+
+  const groq = getGroqClient();
+
+  const callAi = async () => {
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: buildAiAssistPrompt(title.trim(), notes?.trim()) }],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.6,
+      max_tokens: 400,
+    });
+    const text = completion.choices[0]?.message?.content || "";
+    return parseAiAssistResponse(text);
+  };
+
+  let result;
+  try {
+    result = await callAi();
+  } catch {
+    result = await callAi(); // one retry, matching the other AI-generation patterns
+  }
+
+  return res.status(200).json(new ApiResponse(200, result, "Draft generated"));
+});
+
 
 export const createCourse = asyncHandler(async (req, res) => {
   const { title, description, price, category, level, language, tags } = req.body;
@@ -247,19 +327,28 @@ export const getMyCourses = asyncHandler(async (req, res) => {
     .select("-__v")
     .sort({ createdAt: -1 });
 
-  // BUGFIX: course.totalLectures is a manually-maintained counter that can
-  // drift out of sync (e.g. if a lecture is ever deleted directly in the DB
-  // instead of through the API). Always compute the live count from the
-  // Lecture collection so the dashboard never shows a stale number.
-  const liveCounts = await Lecture.aggregate([
-    { $match: { course: { $in: courses.map((c) => c._id) } } },
-    { $group: { _id: "$course", count: { $sum: 1 } } },
+  const courseIds = courses.map((c) => c._id);
+
+  // Dynamically compute live counts from Lecture and Enrollment collections
+  // to ensure dashboard counters never drift out of sync with real data.
+  const [liveLectureCounts, liveEnrollmentCounts] = await Promise.all([
+    Lecture.aggregate([
+      { $match: { course: { $in: courseIds } } },
+      { $group: { _id: "$course", count: { $sum: 1 } } },
+    ]),
+    Enrollment.aggregate([
+      { $match: { course: { $in: courseIds }, isActive: true } },
+      { $group: { _id: "$course", count: { $sum: 1 } } },
+    ]),
   ]);
-  const countMap = new Map(liveCounts.map((c) => [c._id.toString(), c.count]));
+
+  const lectureCountMap = new Map(liveLectureCounts.map((c) => [c._id.toString(), c.count]));
+  const enrollmentCountMap = new Map(liveEnrollmentCounts.map((c) => [c._id.toString(), c.count]));
 
   const coursesWithLiveCount = courses.map((course) => {
     const obj = course.toObject();
-    obj.totalLectures = countMap.get(course._id.toString()) || 0;
+    obj.totalLectures = lectureCountMap.get(course._id.toString()) || 0;
+    obj.totalEnrollments = enrollmentCountMap.get(course._id.toString()) || 0;
     return obj;
   });
 
@@ -337,5 +426,61 @@ export const getCoursesByCategory = asyncHandler(async (req, res) => {
 
   return res.status(200).json(
     new ApiResponse(200, { courses: validCourses, total: validCourses.length }, `Courses in ${category} fetched successfully`)
+  );
+});
+
+
+// NEW — Phase 4: instructor analytics — completion rate, avg quiz score,
+// per-lecture drop-off. Read-only aggregation, no writes.
+export const getCourseAnalytics = asyncHandler(async (req, res) => {
+  const { courseId } = req.params;
+  const { Enrollment } = await import("../models/enrollment.model.js");
+  const { QuizAttempt } = await import("../models/quizAttempt.model.js");
+
+  const course = await Course.findById(courseId);
+  if (!course) throw new ApiError(404, "Course not found");
+  if (course.instructor.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Not authorized");
+  }
+
+  const lectures = await Lecture.find({ course: courseId }).select("_id title order").sort({ order: 1 });
+  const enrollments = await Enrollment.find({ course: courseId, isActive: true });
+
+  const totalStudents = enrollments.length;
+  const completedCount = enrollments.filter((e) => e.progress === 100).length;
+  const completionRate = totalStudents ? Math.round((completedCount / totalStudents) * 100) : 0;
+  const avgProgress = totalStudents
+    ? Math.round(enrollments.reduce((s, e) => s + e.progress, 0) / totalStudents)
+    : 0;
+
+  // Per-lecture drop-off: % of enrolled students who have completed each lecture
+  const dropOff = lectures.map((lec) => {
+    const reached = enrollments.filter((e) =>
+      e.completedLectures.some((id) => id.toString() === lec._id.toString())
+    ).length;
+    return {
+      lectureId: lec._id,
+      title: lec.title,
+      order: lec.order,
+      studentsReached: reached,
+      reachedPercent: totalStudents ? Math.round((reached / totalStudents) * 100) : 0,
+    };
+  });
+
+  const quizAttempts = await QuizAttempt.find({ course: courseId });
+  const avgQuizScore = quizAttempts.length
+    ? Math.round(quizAttempts.reduce((s, a) => s + a.score, 0) / quizAttempts.length)
+    : null;
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      totalStudents,
+      completedCount,
+      completionRate,
+      avgProgress,
+      avgQuizScore,
+      totalQuizAttempts: quizAttempts.length,
+      dropOff,
+    })
   );
 });

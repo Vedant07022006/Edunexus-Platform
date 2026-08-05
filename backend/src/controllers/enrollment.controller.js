@@ -246,6 +246,75 @@ export const updateProgress = asyncHandler(async (req, res) => {
 });
 
 
+// NEW: lightweight playback-position heartbeat. Deliberately separate from
+// updateProgress — this is called every few seconds while a video plays, so
+// it must NEVER touch completedLectures/progress (that would prematurely
+// mark a lecture "completed" a few seconds into playback and break quiz
+// eligibility gating). It only records where to resume from.
+// NEW — Phase 3: updates the user's daily learning streak. Only writes
+// when the calendar day actually changed, so this stays cheap even
+// though it's called from a frequently-hit endpoint.
+const updateLearningStreak = async (userId) => {
+  const { User } = await import("../models/user.model.js");
+  const user = await User.findById(userId).select("currentStreak longestStreak lastActiveDate");
+  if (!user) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const last = user.lastActiveDate ? new Date(user.lastActiveDate) : null;
+  if (last) last.setHours(0, 0, 0, 0);
+
+  if (last && last.getTime() === today.getTime()) return; // already counted today
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const isConsecutive = last && today.getTime() - last.getTime() === oneDayMs;
+
+  user.currentStreak = isConsecutive ? user.currentStreak + 1 : 1;
+  user.longestStreak = Math.max(user.longestStreak, user.currentStreak);
+  user.lastActiveDate = today;
+  await user.save();
+};
+
+
+export const updateLastWatchedPosition = asyncHandler(async (req, res) => {
+  if (!req.user) throw new ApiError(401, "Login required");
+
+  const { courseId } = req.params;
+  const { lectureId, seconds } = req.body;
+
+  if (!lectureId) throw new ApiError(400, "Lecture ID is required");
+
+  const parsedSeconds = Number(seconds);
+  if (!Number.isFinite(parsedSeconds) || parsedSeconds < 0) {
+    throw new ApiError(400, "seconds must be a non-negative number");
+  }
+
+  const enrollment = await Enrollment.findOne({
+    user: req.user._id,
+    course: courseId,
+    isActive: true,
+  });
+
+  // No-op if not enrolled (e.g. instructor preview, or free-course viewer
+  // who hasn't auto-enrolled yet) — position tracking is a nice-to-have,
+  // not something worth erroring the player over.
+  if (!enrollment) {
+    return res.status(200).json(new ApiResponse(200, null, "Not enrolled — position not saved"));
+  }
+
+  enrollment.lastWatchedLecture = lectureId;
+  enrollment.lastWatchedSeconds = Math.floor(parsedSeconds);
+  await enrollment.save();
+
+  // NEW — Phase 3: bump the user's daily learning streak. Cheap
+  // date-only comparison, only writes when the day has actually changed.
+  await updateLearningStreak(req.user._id);
+
+  return res.status(200).json(new ApiResponse(200, null, "Position saved"));
+});
+
+
 export const getCourseEnrollments = asyncHandler(async (req, res) => {
   if (!req.user) throw new ApiError(401, "Login required");
 

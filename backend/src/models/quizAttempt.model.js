@@ -99,6 +99,18 @@ const quizAttemptSchema = new Schema(
       type: [Schema.Types.ObjectId],
       default: [],
     },
+
+    // NEW — Phase 2: on-demand, student-triggered personalized feedback
+    // based on which questions they got wrong. Generated once and cached.
+    weakSpotReview: {
+      type: [String],
+      default: [],
+    },
+    weakSpotStatus: {
+      type: String,
+      enum: ["none", "generating", "completed", "failed"],
+      default: "none",
+    },
   },
   { timestamps: true }
 );

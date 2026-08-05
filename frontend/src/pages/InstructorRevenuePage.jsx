@@ -87,8 +87,8 @@ export default function InstructorRevenuePage() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <p className="text-sm text-slate-500">Instructor</p>
-          <h1 className="text-3xl font-bold text-white mt-1">Revenue Dashboard</h1>
-          <p className="text-slate-400 mt-1 text-sm">Track your earnings and student enrollments per course</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">Revenue Dashboard</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm">Track your earnings and student enrollments per course</p>
         </motion.div>
 
         {/* Stats */}
@@ -104,10 +104,10 @@ export default function InstructorRevenuePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
-              className="glass rounded-2xl p-5 border border-white/[0.06]"
+              className="glass rounded-2xl p-5 border border-slate-900/[0.06] dark:border-white/[0.06]"
             >
               <Icon size={18} className={color} />
-              <p className="text-2xl font-bold text-white mt-3">{value}</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-3">{value}</p>
               <p className="text-xs text-slate-500 mt-0.5">{label}</p>
             </motion.div>
           ))}
@@ -122,16 +122,16 @@ export default function InstructorRevenuePage() {
               placeholder="Search courses..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm glass rounded-xl border border-white/[0.06]
-                         text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50"
+              className="w-full pl-9 pr-4 py-2.5 text-sm glass rounded-xl border border-slate-900/[0.06] dark:border-white/[0.06]
+                         text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50"
             />
           </div>
 
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="px-3 py-2 text-sm glass rounded-xl border border-white/[0.06]
-                       text-slate-300 focus:outline-none focus:border-primary-500/50"
+            className="px-3 py-2 text-sm glass rounded-xl border border-slate-900/[0.06] dark:border-white/[0.06]
+                       text-slate-700 dark:text-slate-300 focus:outline-none focus:border-primary-500/50"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value} style={{ background: '#1a1d2e' }}>{s.label}</option>
@@ -143,13 +143,13 @@ export default function InstructorRevenuePage() {
         {loading ? (
           <div className="space-y-3">
             {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="glass rounded-2xl h-20 animate-pulse border border-white/[0.06]" />
+              <div key={i} className="glass rounded-2xl h-20 animate-pulse border border-slate-900/[0.06] dark:border-white/[0.06]" />
             ))}
           </div>
         ) : courses.length === 0 ? (
-          <div className="glass rounded-2xl p-16 text-center border border-white/[0.06]">
+          <div className="glass rounded-2xl p-16 text-center border border-slate-900/[0.06] dark:border-white/[0.06]">
             <BookOpen size={48} className="text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No courses found</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No courses found</h3>
             <p className="text-sm text-slate-500">
               {search ? 'Try adjusting your search' : 'Create a course to start earning'}
             </p>
@@ -170,13 +170,13 @@ export default function InstructorRevenuePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   className={`glass rounded-2xl border overflow-hidden transition-all ${
-                    isExpanded ? 'border-primary-500/30' : 'border-white/[0.06]'
+                    isExpanded ? 'border-primary-500/30' : 'border-slate-900/[0.06] dark:border-white/[0.06]'
                   }`}
                 >
                   {/* ── Course header — clickable to expand ── */}
                   <button
                     onClick={() => toggleCourse(course._id)}
-                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/[0.02] transition-colors"
+                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-slate-900/[0.02] dark:hover:bg-white/[0.02] transition-colors"
                   >
                     {/* Thumbnail */}
                     <div className="w-14 h-10 rounded-xl overflow-hidden bg-surface-3 flex-shrink-0">
@@ -195,7 +195,7 @@ export default function InstructorRevenuePage() {
 
                     {/* Course info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white text-sm truncate">{course.title}</h3>
+                      <h3 className="font-semibold text-slate-900 dark:text-white text-sm truncate">{course.title}</h3>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {course.isFree ? 'Free course' : `₹${course.price} per student`}
                         {' · '}
@@ -207,7 +207,7 @@ export default function InstructorRevenuePage() {
                     <div className="text-right flex-shrink-0 mr-2">
                       <p className="text-xs text-slate-500">Revenue</p>
                       <p className={`text-base font-bold mt-0.5 ${
-                        course.isFree ? 'text-emerald-400' : 'text-white'
+                        course.isFree ? 'text-emerald-400' : 'text-slate-900 dark:text-white'
                       }`}>
                         {course.isFree ? 'Free' : `₹${course.revenue}`}
                       </p>
@@ -215,7 +215,7 @@ export default function InstructorRevenuePage() {
 
                     {/* Expand arrow */}
                     <div className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-                      <ChevronDown size={16} className="text-slate-400" />
+                      <ChevronDown size={16} className="text-slate-600 dark:text-slate-400" />
                     </div>
                   </button>
 
@@ -229,7 +229,7 @@ export default function InstructorRevenuePage() {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-4 pb-4 border-t border-white/[0.06] pt-3">
+                        <div className="px-4 pb-4 border-t border-slate-900/[0.06] dark:border-white/[0.06] pt-3">
                           {course.students.length === 0 ? (
                             <p className="text-xs text-slate-500 text-center py-3">
                               No students enrolled yet
@@ -245,14 +245,14 @@ export default function InstructorRevenuePage() {
                                         {getInitials(student.studentName)}
                                       </div>
                                       <div>
-                                        <p className="text-sm text-white">{student.studentName}</p>
+                                        <p className="text-sm text-slate-900 dark:text-white">{student.studentName}</p>
                                         <p className="text-xs text-slate-500">
                                           Enrolled {formatDate(student.enrolledAt)}
                                         </p>
                                       </div>
                                     </div>
                                     <p className={`text-sm font-medium ${
-                                      student.amountPaid === 0 ? 'text-emerald-400' : 'text-white'
+                                      student.amountPaid === 0 ? 'text-emerald-400' : 'text-slate-900 dark:text-white'
                                     }`}>
                                       {student.amountPaid === 0 ? 'Free' : `₹${student.amountPaid}`}
                                     </p>

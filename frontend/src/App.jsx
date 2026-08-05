@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext'; // NEW
 import { ProtectedRoute, PublicRoute } from './components/routes/ProtectedRoute';
 
 // Pages
@@ -22,24 +23,31 @@ import StudentPurchasesPage from './pages/StudentPurchasesPage';   // NEW
 import InstructorRevenuePage from './pages/InstructorRevenuePage'; // NEW
 import QuizPage              from './pages/QuizPage';              // NEW
 import QuizResultPage        from './pages/QuizResultPage';        // NEW (placeholder this slice)
+import CertificatePage       from './pages/CertificatePage';       // NEW — Phase 3
+import LeaderboardPage       from './pages/LeaderboardPage';       // NEW — Phase 3
+import ReportsPage           from './pages/ReportPage';            // NEW — Phase 5 (file: ReportPage.jsx)
+import CourseAnalyticsPage   from './pages/CourseAnalyticsPage';   // NEW — Phase 4
+import BundlesPage           from './pages/BundlePage';            // NEW — Phase 4 (file: BundlePage.jsx)
+import CreateBundlePage      from './pages/CreateBundlePage';      // NEW — Phase 4
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background:   '#1e1e35',
-              color:        '#e2e8f0',
-              border:       '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '12px',
-              fontSize:     '14px',
-            },
-            success: { iconTheme: { primary: '#6366f1', secondary: '#fff' } },
-          }}
-        />
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background:   'var(--color-surface-3)', // was hardcoded '#1e1e35'
+                color:        'var(--color-text)',       // was hardcoded '#e2e8f0'
+                border:       '1px solid var(--color-border)', // was hardcoded rgba(255,255,255,0.08)
+                borderRadius: '12px',
+                fontSize:     '14px',
+              },
+              success: { iconTheme: { primary: '#6366f1', secondary: '#fff' } },
+            }}
+          />
 
         <Routes>
           {/* Public */}
@@ -70,6 +78,22 @@ export default function App() {
           <Route path="/quiz/:lectureId/result" element={
             <ProtectedRoute><QuizResultPage /></ProtectedRoute>
           } />
+          <Route path="/certificate/:courseId" element={
+            <ProtectedRoute role="student"><CertificatePage /></ProtectedRoute>
+          } />
+          <Route path="/leaderboard/:courseId" element={
+            <ProtectedRoute><LeaderboardPage /></ProtectedRoute>
+          } />
+          <Route path="/instructor/reports" element={
+            <ProtectedRoute role="instructor"><ReportsPage /></ProtectedRoute>
+          } />
+          <Route path="/instructor/courses/:courseId/analytics" element={
+            <ProtectedRoute role="instructor"><CourseAnalyticsPage /></ProtectedRoute>
+          } />
+          <Route path="/bundles" element={<BundlesPage />} />
+          <Route path="/instructor/bundles/create" element={
+            <ProtectedRoute role="instructor"><CreateBundlePage /></ProtectedRoute>
+          } />
           <Route path="/profile" element={
             <ProtectedRoute><ProfilePage /></ProtectedRoute>
           } />
@@ -92,8 +116,8 @@ export default function App() {
           <Route path="*" element={
             <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
               <p className="text-8xl font-black gradient-text mb-4">404</p>
-              <h2 className="text-2xl font-bold text-white mb-2">Page not found</h2>
-              <p className="text-slate-400 mb-8">The page you're looking for doesn't exist.</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Page not found</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-8">The page you're looking for doesn't exist.</p>
               <a href="/" className="gradient-primary text-white px-6 py-3 rounded-xl font-medium hover:opacity-90 transition-opacity">
                 Go Home
               </a>
@@ -101,6 +125,7 @@ export default function App() {
           } />
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

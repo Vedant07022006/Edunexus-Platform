@@ -75,22 +75,22 @@ export default function ChatbotWidget({ lectureId, lectureTitle, currentUser }) 
   const limitReached = quota && quota.remaining <= 0;
 
   return (
-    <div className="glass rounded-2xl border border-white/[0.06] flex flex-col overflow-hidden" style={{ height: '480px' }}>
+    <div className="glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] flex flex-col overflow-hidden" style={{ height: '480px' }}>
 
       {/* Header */}
-      <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between flex-shrink-0">
+      <div className="px-4 py-3 border-b border-slate-900/[0.06] dark:border-white/[0.06] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-primary-500/20 flex items-center justify-center">
             <Bot size={14} className="text-primary-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Ask a Doubt</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Ask a Doubt</p>
             <p className="text-xs text-slate-500 truncate max-w-[180px]">{lectureTitle}</p>
           </div>
         </div>
         {quota && (
           <span className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1 ${
-            limitReached ? 'bg-red-500/15 text-red-400' : 'bg-white/5 text-slate-400'
+            limitReached ? 'bg-red-500/15 text-red-400' : 'bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-400'
           }`}>
             <MessageCircle size={11} /> {quota.used}/{quota.limit} today
           </span>
@@ -117,7 +117,7 @@ export default function ChatbotWidget({ lectureId, lectureTitle, currentUser }) 
             <div className={`max-w-[80%] px-3 py-2 rounded-xl text-sm leading-relaxed ${
               m.role === 'user'
                 ? 'bg-primary-500/20 text-primary-200 rounded-tr-none'
-                : 'bg-white/5 text-slate-200 rounded-tl-none'
+                : 'bg-slate-900/5 dark:bg-white/5 text-slate-800 dark:text-slate-200 rounded-tl-none'
             }`}>
               {m.content}
             </div>
@@ -129,7 +129,7 @@ export default function ChatbotWidget({ lectureId, lectureTitle, currentUser }) 
             <div className="w-6 h-6 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center flex-shrink-0">
               <Bot size={12} />
             </div>
-            <div className="bg-white/5 text-slate-400 px-3 py-2 rounded-xl rounded-tl-none text-sm flex items-center gap-1.5">
+            <div className="bg-slate-900/5 dark:bg-white/5 text-slate-600 dark:text-slate-400 px-3 py-2 rounded-xl rounded-tl-none text-sm flex items-center gap-1.5">
               <Loader2 size={12} className="animate-spin" /> Thinking...
             </div>
           </div>
@@ -137,7 +137,7 @@ export default function ChatbotWidget({ lectureId, lectureTitle, currentUser }) 
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-white/[0.06] flex-shrink-0">
+      <div className="p-3 border-t border-slate-900/[0.06] dark:border-white/[0.06] flex-shrink-0">
         {limitReached ? (
           <p className="text-xs text-center text-yellow-400 py-2">
             Daily message limit reached. Come back tomorrow for more doubts.
@@ -151,7 +151,7 @@ export default function ChatbotWidget({ lectureId, lectureTitle, currentUser }) 
               placeholder="Type your doubt here..."
               rows={1}
               disabled={sending}
-              className="flex-1 px-3 py-2 text-sm rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none disabled:opacity-50"
+              className="flex-1 px-3 py-2 text-sm rounded-xl bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-primary-500/50 resize-none disabled:opacity-50"
             />
             <button
               onClick={handleSend}

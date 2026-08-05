@@ -51,11 +51,11 @@ export default function ForgotPasswordPage() {
             <Zap size={28} className="text-white" />
           </div>
           <h1 className="text-4xl font-bold gradient-text mb-4">EduNexus</h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-slate-600 dark:text-slate-400 text-lg">
             Forgot your password?<br />No worries, we've got you covered.
           </p>
-          <div className="mt-10 p-4 glass rounded-2xl border border-white/[0.06] text-left max-w-xs mx-auto">
-            <p className="text-xs text-slate-400 leading-relaxed">
+          <div className="mt-10 p-4 glass rounded-2xl border border-slate-900/[0.06] dark:border-white/[0.06] text-left max-w-xs mx-auto">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               We'll send a secure password reset link to your registered email address. The link expires in <span className="text-primary-300 font-medium">15 minutes</span>.
             </p>
           </div>
@@ -82,14 +82,14 @@ export default function ForgotPasswordPage() {
             <>
               <Link
                 to="/login"
-                className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors mb-8 group"
+                className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors mb-8 group"
               >
                 <ArrowLeft size={15} className="group-hover:-translate-x-1 transition-transform" />
                 Back to login
               </Link>
 
-              <h2 className="text-3xl font-bold text-white mb-1">Forgot password?</h2>
-              <p className="text-slate-400 text-sm mb-8">
+              <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Forgot password?</h2>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-8">
                 Enter your account email and we'll send you a reset link.
               </p>
 
@@ -133,13 +133,13 @@ export default function ForgotPasswordPage() {
               <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle size={40} className="text-emerald-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Check your inbox!</h2>
-              <p className="text-slate-400 text-sm mb-2">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Check your inbox!</h2>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">
                 We've sent a password reset link to:
               </p>
               <p className="text-primary-300 font-medium mb-6">{email}</p>
               <p className="text-slate-500 text-xs mb-8 leading-relaxed">
-                The link will expire in <span className="text-slate-300">15 minutes</span>.
+                The link will expire in <span className="text-slate-700 dark:text-slate-300">15 minutes</span>.
                 If you don't see it, check your spam folder.
               </p>
 

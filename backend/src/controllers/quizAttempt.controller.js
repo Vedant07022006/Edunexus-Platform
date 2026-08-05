@@ -6,9 +6,77 @@ import { Quiz } from "../models/quiz.model.js";
 import { Enrollment } from "../models/enrollment.model.js";
 import { Lecture } from "../models/lecture.model.js";
 import mongoose from "mongoose";
+import Groq from "groq-sdk"; // NEW — Phase 2: weak-spot review
 
 const MAX_ATTEMPTS   = 3;
 const COOLDOWN_HOURS = 24;
+
+// ─── Weak-spot review helpers (NEW — Phase 2) ──────────────────────────────────
+
+const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+const parseWeakSpotResponse = (raw) => {
+  const cleaned = raw.replace(/```json|```/g, "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new ApiError(500, "AI returned invalid feedback content. Please try again.");
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new ApiError(500, "AI did not return valid feedback. Please try again.");
+  }
+  return parsed
+    .map((point) => (typeof point === "string" ? point.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 5);
+};
+
+const buildWeakSpotPrompt = (wrongQuestions) => {
+  const questionsBlock = wrongQuestions
+    .map(
+      (q, i) =>
+        `${i + 1}. Question: ${q.questionText}\n   Correct answer: ${q.correctAnswer}\n   Student answered: ${q.selectedAnswer}\n   Explanation: ${q.explanation || "N/A"}`
+    )
+    .join("\n\n");
+
+  return `
+A student just took a quiz and got the following questions wrong. Based on the
+pattern of mistakes, write 2 to 4 short, encouraging, specific study
+suggestions telling them which topics/concepts to review.
+
+Rules:
+- Return ONLY a JSON array of strings, nothing else — no markdown, no preamble.
+- Each string should be one concise, actionable suggestion (max ~25 words).
+- Be encouraging in tone, not discouraging — this is meant to help them improve.
+- Focus on the underlying CONCEPT they seem to be missing, not just repeating the question.
+- Example valid output: ["Review how binary search handles edge cases with duplicate values.", "Revisit the difference between synchronous and asynchronous JavaScript."]
+
+Questions the student got wrong:
+${questionsBlock}
+`.trim();
+};
+
+const generateWeakSpotWithAi = async (wrongQuestions) => {
+  const groq = getGroqClient();
+
+  const callAi = async () => {
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: buildWeakSpotPrompt(wrongQuestions) }],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.5,
+      max_tokens: 500,
+    });
+    const text = completion.choices[0]?.message?.content || "";
+    return parseWeakSpotResponse(text);
+  };
+
+  try {
+    return await callAi();
+  } catch {
+    return await callAi(); // one retry, matching the other AI-generation patterns
+  }
+};
 
 
 // Checks whether a student is currently allowed to start a new quiz
@@ -398,4 +466,70 @@ export const getAttemptDetails = asyncHandler(async (req, res) => {
       maxAttempts: MAX_ATTEMPTS,
     })
   );
+});
+
+
+// NEW — Phase 2: on-demand, student-triggered personalized weak-spot
+// feedback. Generated once per attempt and cached on the QuizAttempt doc.
+export const generateWeakSpotReview = asyncHandler(async (req, res) => {
+  if (!req.user) throw new ApiError(401, "Login required");
+
+  const { attemptId } = req.params;
+
+  const attempt = await QuizAttempt.findById(attemptId).populate(
+    "quiz",
+    "questions"
+  );
+  if (!attempt) throw new ApiError(404, "Attempt not found");
+
+  if (attempt.user.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "Not authorized");
+  }
+
+  if (attempt.totalCorrect >= attempt.totalQuestions) {
+    throw new ApiError(400, "Perfect score — no weak spots to review!");
+  }
+
+  // Return existing review instead of regenerating
+  if (attempt.weakSpotStatus === "completed" && attempt.weakSpotReview.length > 0) {
+    return res.status(200).json(new ApiResponse(200, attempt, "Review already exists"));
+  }
+
+  const wrongQuestions = attempt.answers
+    .filter((a) => !a.isCorrect)
+    .map((a) => {
+      const question = attempt.quiz.questions.find(
+        (q) => q._id.toString() === a.question.toString()
+      );
+      if (!question) return null;
+      return {
+        questionText:  question.questionText,
+        correctAnswer: question.correctAnswer,
+        selectedAnswer: a.selectedAnswer || "(no answer)",
+        explanation:   question.explanation,
+      };
+    })
+    .filter(Boolean);
+
+  if (wrongQuestions.length === 0) {
+    throw new ApiError(400, "No wrong answers found for this attempt");
+  }
+
+  await QuizAttempt.findByIdAndUpdate(attemptId, { weakSpotStatus: "generating" });
+
+  let weakSpotReview;
+  try {
+    weakSpotReview = await generateWeakSpotWithAi(wrongQuestions);
+  } catch (err) {
+    await QuizAttempt.findByIdAndUpdate(attemptId, { weakSpotStatus: "failed" });
+    throw err;
+  }
+
+  const updated = await QuizAttempt.findByIdAndUpdate(
+    attemptId,
+    { weakSpotReview, weakSpotStatus: "completed" },
+    { returnDocument: 'after' }
+  );
+
+  return res.status(201).json(new ApiResponse(201, updated, "Weak-spot review generated"));
 });
