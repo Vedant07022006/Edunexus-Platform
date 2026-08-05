@@ -12,8 +12,8 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../src/app.js';
-import { User } from '../src/models/user.model.js';
-import { PendingUser } from '../src/models/pendingUser.model.js';
+import { User } from '../src/modules/user/user.model.js';
+import { PendingUser } from '../src/modules/user/pendingUser.model.js';
 import bcrypt from 'bcrypt';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
