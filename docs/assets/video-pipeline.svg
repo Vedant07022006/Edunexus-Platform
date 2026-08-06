@@ -1,0 +1,54 @@
+<svg viewBox="0 0 780 762" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="780" height="762" fill="#0d1117"/>
+<text x="390.0" y="36" text-anchor="middle" fill="#58a6ff" font-size="20" font-weight="700">Course Creation, Video Upload &amp; AI Processing Pipeline</text>
+<rect x="80.0" y="70" width="620" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="390.0" y="103.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Instructor uploads lecture video</text>
+<rect x="80.0" y="166" width="620" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="390.0" y="191.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Multer stages file -&gt; Cloudinary upload</text>
+<text x="390.0" y="207.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">(secure URL + HLS profile)</text>
+<rect x="80.0" y="262" width="620" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="390.0" y="295.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Save Lecture record (status: pending)</text>
+<rect x="80.0" y="358" width="620" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="390.0" y="383.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">AssemblyAI: async speech-to-text</text>
+<text x="390.0" y="399.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">transcription</text>
+<rect x="80.0" y="454" width="620" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="390.0" y="487.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Save Transcript record</text>
+<rect x="35.0" y="550" width="330" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="200.0" y="567.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Groq (Llama 3.3): generate</text>
+<text x="200.0" y="583.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">3–5 bullet key-takeaway</text>
+<text x="200.0" y="599.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">summary</text>
+<rect x="415.0" y="550" width="330" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="580.0" y="567.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Groq (Llama 3.3): generate</text>
+<text x="580.0" y="583.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">20-question quiz (5 easy /</text>
+<text x="580.0" y="599.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">10 medium / 5 hard)</text>
+<rect x="80.0" y="646" width="620" height="56" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.6"/>
+<text x="390.0" y="679.0" text-anchor="middle" fill="#c9d1d9" font-size="13.5">Lecture status: completed</text>
+<line x1="390.0" y1="126" x2="390.0" y2="156" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="390.0,166 384.0,156 396.0,156" fill="#79c0ff"/>
+<rect x="300.0" y="136.0" width="180" height="16" fill="#0d1117"/>
+<text x="390.0" y="148.0" text-anchor="middle" fill="#8b949e" font-size="11.5">Upload</text>
+<line x1="390.0" y1="222" x2="390.0" y2="252" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="390.0,262 384.0,252 396.0,252" fill="#79c0ff"/>
+<rect x="300.0" y="232.0" width="180" height="16" fill="#0d1117"/>
+<text x="390.0" y="244.0" text-anchor="middle" fill="#8b949e" font-size="11.5">Return secure URL</text>
+<line x1="390.0" y1="318" x2="390.0" y2="348" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="390.0,358 384.0,348 396.0,348" fill="#79c0ff"/>
+<rect x="300.0" y="328.0" width="180" height="16" fill="#0d1117"/>
+<text x="390.0" y="340.0" text-anchor="middle" fill="#8b949e" font-size="11.5">Trigger async transcript job</text>
+<line x1="390.0" y1="414" x2="390.0" y2="444" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="390.0,454 384.0,444 396.0,444" fill="#79c0ff"/>
+<rect x="300.0" y="424.0" width="180" height="16" fill="#0d1117"/>
+<text x="390.0" y="436.0" text-anchor="middle" fill="#8b949e" font-size="11.5">Return full transcript</text>
+<line x1="390.0" y1="510" x2="200.0" y2="540" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="200.0,550 194.0,540 206.0,540" fill="#79c0ff"/>
+<rect x="205.0" y="520.0" width="180" height="16" fill="#0d1117"/>
+<text x="295.0" y="532.0" text-anchor="middle" fill="#8b949e" font-size="11.5">Trigger AI summarizer</text>
+<line x1="390.0" y1="510" x2="580.0" y2="540" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="580.0,550 574.0,540 586.0,540" fill="#79c0ff"/>
+<rect x="395.0" y="520.0" width="180" height="16" fill="#0d1117"/>
+<text x="485.0" y="532.0" text-anchor="middle" fill="#8b949e" font-size="11.5">Trigger AI quiz generation</text>
+<path d="M 200.0 606 L 200.0 626 L 390.0 626 L 390.0 636" fill="none" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="390.0,646 384.0,636 396.0,636" fill="#79c0ff"/>
+<path d="M 580.0 606 L 580.0 626 L 390.0 626 L 390.0 636" fill="none" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="390.0,646 384.0,636 396.0,636" fill="#79c0ff"/>
+</svg>

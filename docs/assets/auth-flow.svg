@@ -1,0 +1,91 @@
+<svg viewBox="0 0 940 1090" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="940" height="1090" fill="#0d1117"/>
+<text x="470.0" y="36" text-anchor="middle" fill="#58a6ff" font-size="21" font-weight="700">Authentication &amp; User Lifecycle Flow</text>
+<rect x="22.0" y="70" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="80.0" y="92" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">User</text>
+<rect x="22.0" y="1016" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="80.0" y="1038" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">User</text>
+<line x1="80.0" y1="104" x2="80.0" y2="1016" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3"/>
+<rect x="217.0" y="70" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="275.0" y="92" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">Client</text>
+<rect x="217.0" y="1016" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="275.0" y="1038" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">Client</text>
+<line x1="275.0" y1="104" x2="275.0" y2="1016" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3"/>
+<rect x="412.0" y="70" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="470.0" y="92" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">API</text>
+<rect x="412.0" y="1016" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="470.0" y="1038" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">API</text>
+<line x1="470.0" y1="104" x2="470.0" y2="1016" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3"/>
+<rect x="607.0" y="70" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="665.0" y="92" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">DB</text>
+<rect x="607.0" y="1016" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="665.0" y="1038" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">DB</text>
+<line x1="665.0" y1="104" x2="665.0" y2="1016" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3"/>
+<rect x="802.0" y="70" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="860.0" y="92" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">SMTP</text>
+<rect x="802.0" y="1016" width="116" height="34" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+<text x="860.0" y="1038" text-anchor="middle" fill="#c9d1d9" font-size="14" font-weight="600">SMTP</text>
+<line x1="860.0" y1="104" x2="860.0" y2="1016" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3"/>
+<text x="177.5" y="140" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Submit Registration Form</text>
+<text x="54.0" y="154" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">1</text>
+<line x1="80.0" y1="150" x2="265.0" y2="150" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="275.0,150 265.0,145 265.0,155" fill="#79c0ff"/>
+<text x="372.5" y="202" text-anchor="middle" fill="#c9d1d9" font-size="12.5">POST /api/v1/users/register</text>
+<text x="249.0" y="216" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">2</text>
+<line x1="275.0" y1="212" x2="460.0" y2="212" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="470.0,212 460.0,207 460.0,217" fill="#79c0ff"/>
+<text x="560.0" y="250" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Hash Password &amp; Generate</text>
+<text x="560.0" y="264" text-anchor="middle" fill="#c9d1d9" font-size="12.5">6-digit OTP</text>
+<text x="448.0" y="278" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">3</text>
+<path d="M 470.0 270 C 545.0 268, 545.0 290, 470.0 292" fill="none" stroke="#d2a8ff" stroke-width="1.8"/>
+<polygon points="474.0,292 485.0,287 483.0,296" fill="#d2a8ff"/>
+<text x="567.5" y="312" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Save to PendingUser (TTL</text>
+<text x="567.5" y="326" text-anchor="middle" fill="#c9d1d9" font-size="12.5">index)</text>
+<text x="444.0" y="340" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">4</text>
+<line x1="470.0" y1="336" x2="655.0" y2="336" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="665.0,336 655.0,331 655.0,341" fill="#79c0ff"/>
+<text x="665.0" y="388" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Send OTP Email</text>
+<text x="444.0" y="402" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">5</text>
+<line x1="470.0" y1="398" x2="850.0" y2="398" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="860.0,398 850.0,393 850.0,403" fill="#79c0ff"/>
+<text x="372.5" y="450" text-anchor="middle" fill="#c9d1d9" font-size="12.5">201 Created — OTP Sent</text>
+<text x="249.0" y="464" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">6</text>
+<line x1="470.0" y1="460" x2="285.0" y2="460" stroke="#f0883e" stroke-width="1.8" stroke-dasharray="6,4"/>
+<polygon points="275.0,460 285.0,455 285.0,465" fill="#f0883e"/>
+<text x="177.5" y="512" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Enter OTP</text>
+<text x="54.0" y="526" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">7</text>
+<line x1="80.0" y1="522" x2="265.0" y2="522" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="275.0,522 265.0,517 265.0,527" fill="#79c0ff"/>
+<text x="372.5" y="560" text-anchor="middle" fill="#c9d1d9" font-size="12.5">POST /api/v1/users/verify-</text>
+<text x="372.5" y="574" text-anchor="middle" fill="#c9d1d9" font-size="12.5">email-otp</text>
+<text x="249.0" y="588" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">8</text>
+<line x1="275.0" y1="584" x2="460.0" y2="584" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="470.0,584 460.0,579 460.0,589" fill="#79c0ff"/>
+<text x="567.5" y="622" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Verify OTP hash &amp; promote</text>
+<text x="567.5" y="636" text-anchor="middle" fill="#c9d1d9" font-size="12.5">PendingUser -&gt; User</text>
+<text x="444.0" y="650" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">9</text>
+<line x1="470.0" y1="646" x2="655.0" y2="646" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="665.0,646 655.0,641 655.0,651" fill="#79c0ff"/>
+<text x="372.5" y="698" text-anchor="middle" fill="#c9d1d9" font-size="12.5">200 OK — Email Verified</text>
+<text x="249.0" y="712" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">10</text>
+<line x1="470.0" y1="708" x2="285.0" y2="708" stroke="#f0883e" stroke-width="1.8" stroke-dasharray="6,4"/>
+<polygon points="275.0,708 285.0,703 285.0,713" fill="#f0883e"/>
+<text x="177.5" y="760" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Login Credentials</text>
+<text x="54.0" y="774" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">11</text>
+<line x1="80.0" y1="770" x2="265.0" y2="770" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="275.0,770 265.0,765 265.0,775" fill="#79c0ff"/>
+<text x="372.5" y="822" text-anchor="middle" fill="#c9d1d9" font-size="12.5">POST /api/v1/users/login</text>
+<text x="249.0" y="836" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">12</text>
+<line x1="275.0" y1="832" x2="460.0" y2="832" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="470.0,832 460.0,827 460.0,837" fill="#79c0ff"/>
+<text x="567.5" y="870" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Verify Password (bcrypt, 12</text>
+<text x="567.5" y="884" text-anchor="middle" fill="#c9d1d9" font-size="12.5">rounds)</text>
+<text x="444.0" y="898" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">13</text>
+<line x1="470.0" y1="894" x2="655.0" y2="894" stroke="#79c0ff" stroke-width="1.8"/>
+<polygon points="665.0,894 655.0,889 655.0,899" fill="#79c0ff"/>
+<text x="372.5" y="932" text-anchor="middle" fill="#c9d1d9" font-size="12.5">200 OK — Set HttpOnly Access &amp;</text>
+<text x="372.5" y="946" text-anchor="middle" fill="#c9d1d9" font-size="12.5">Refresh Cookies</text>
+<text x="249.0" y="960" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="700">14</text>
+<line x1="470.0" y1="956" x2="285.0" y2="956" stroke="#f0883e" stroke-width="1.8" stroke-dasharray="6,4"/>
+<polygon points="275.0,956 285.0,951 285.0,961" fill="#f0883e"/>
+</svg>
