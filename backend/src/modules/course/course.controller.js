@@ -5,8 +5,10 @@ import { Course } from "./course.model.js";
 import { User } from "../user/user.model.js";
 import { Enrollment } from "../enrollment/enrollment.model.js";
 import { Lecture } from "../lecture/lecture.model.js";
+import { QuizAttempt } from "../quiz/quizAttempt.model.js";
 import { uploadThumbnailOnCloudinary, deleteFromCloudinary } from "../../utils/cloudinary.js";
-import Groq from "groq-sdk"; // NEW — Phase 2: AI-assisted course description/tags
+import { getGroqClient, parseAiJsonResponse } from "../../utils/groq.js";
+import { getOwnedCourse } from "./course.service.js";
 import mongoose from "mongoose";
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -21,49 +23,7 @@ const parseTags = (tags) => {
   return Array.isArray(tags) ? tags : tags.split(",").map((t) => t.trim());
 };
 
-/**
- * Finds a course by ID, verifies ownership, and optionally checks that
- * the instructor still exists in the DB.
- */
-const getOwnedCourse = async (courseId, instructorId) => {
-  const course = await Course.findById(courseId);
-  if (!course) throw new ApiError(404, "Course not found");
-  if (!course.instructor) throw new ApiError(404, "This course is no longer available");
-  if (course.instructor.toString() !== instructorId.toString()) {
-    throw new ApiError(403, "You are not authorized to modify this course");
-  }
-  return course;
-};
-
-// ─── Controllers ───────────────────────────────────────────────────────────────
-
-// ─── AI-assist helpers (NEW — Phase 2) ─────────────────────────────────────────
-
-const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-const parseAiAssistResponse = (raw) => {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
-  let parsed;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new ApiError(500, "AI returned invalid content. Please try again or write it manually.");
-  }
-  if (
-    !parsed ||
-    typeof parsed.description !== "string" ||
-    !Array.isArray(parsed.tags)
-  ) {
-    throw new ApiError(500, "AI did not return a valid description/tags pair. Please try again.");
-  }
-  return {
-    description: parsed.description.trim(),
-    tags: parsed.tags
-      .map((t) => (typeof t === "string" ? t.trim().toLowerCase() : ""))
-      .filter(Boolean)
-      .slice(0, 8),
-  };
-};
+// ─── AI-assist helpers ──────────────────────────────────────────────────────────
 
 const buildAiAssistPrompt = (title, notes) => `
 You are helping an instructor draft their online course listing.
@@ -81,11 +41,8 @@ Rules:
 - The description should sound professional and appealing to prospective students, not generic filler.
 `.trim();
 
-// ─── Controllers ───────────────────────────────────────────────────────────────
-
-// NEW — Phase 2: stateless AI-assist endpoint. Returns a draft
-// description + tags for the instructor to review/edit before creating
-// the course — nothing is saved here.
+// Stateless AI-assist endpoint. Returns a draft description + tags for the
+// instructor to review/edit before creating the course — nothing is saved.
 export const generateCourseAiAssist = asyncHandler(async (req, res) => {
   const { title, notes } = req.body;
 
@@ -103,14 +60,23 @@ export const generateCourseAiAssist = asyncHandler(async (req, res) => {
       max_tokens: 400,
     });
     const text = completion.choices[0]?.message?.content || "";
-    return parseAiAssistResponse(text);
+    return parseAiJsonResponse(text, (parsed) => {
+      if (!parsed || typeof parsed.description !== "string" || !Array.isArray(parsed.tags)) {
+        throw new ApiError(500, "AI did not return a valid description/tags pair. Please try again.");
+      }
+      parsed.description = parsed.description.trim();
+      parsed.tags = parsed.tags
+        .map((t) => (typeof t === "string" ? t.trim().toLowerCase() : ""))
+        .filter(Boolean)
+        .slice(0, 8);
+    }, "AI returned invalid content. Please try again or write it manually.");
   };
 
   let result;
   try {
     result = await callAi();
   } catch {
-    result = await callAi(); // one retry, matching the other AI-generation patterns
+    result = await callAi(); // one retry
   }
 
   return res.status(200).json(new ApiResponse(200, result, "Draft generated"));
@@ -430,12 +396,10 @@ export const getCoursesByCategory = asyncHandler(async (req, res) => {
 });
 
 
-// NEW — Phase 4: instructor analytics — completion rate, avg quiz score,
-// per-lecture drop-off. Read-only aggregation, no writes.
+// Instructor analytics — completion rate, avg quiz score, per-lecture drop-off.
+// Read-only aggregation, no writes.
 export const getCourseAnalytics = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  const { Enrollment: EnrollmentModel } = await import("../enrollment/enrollment.model.js");
-  const { QuizAttempt } = await import("../quiz/quizAttempt.model.js");
 
   const course = await Course.findById(courseId);
   if (!course) throw new ApiError(404, "Course not found");
@@ -444,7 +408,7 @@ export const getCourseAnalytics = asyncHandler(async (req, res) => {
   }
 
   const lectures = await Lecture.find({ course: courseId }).select("_id title order").sort({ order: 1 });
-  const enrollments = await EnrollmentModel.find({ course: courseId, isActive: true });
+  const enrollments = await Enrollment.find({ course: courseId, isActive: true });
 
   const totalStudents = enrollments.length;
   const completedCount = enrollments.filter((e) => e.progress === 100).length;

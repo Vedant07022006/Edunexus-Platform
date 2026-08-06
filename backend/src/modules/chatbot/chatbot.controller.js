@@ -4,16 +4,12 @@ import ApiResponse from "../../utils/ApiResponse.js";
 import { User } from "../user/user.model.js";
 import { Lecture } from "../lecture/lecture.model.js";
 import { Transcript } from "../transcript/transcript.model.js";
-import Groq from "groq-sdk";
+import { Enrollment } from "../enrollment/enrollment.model.js";
+import { getGroqClient, trimTranscript } from "../../utils/groq.js";
 
 const DAILY_CHAT_LIMIT = 50;
 const MAX_TRANSCRIPT_CHARS = 4000; // keep prompt size reasonable
 const MAX_HISTORY_MESSAGES = 6;    // last N messages of chat history sent for context
-
-const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-const trimText = (text, maxChars) =>
-  text.length <= maxChars ? text : text.slice(0, maxChars) + "...";
 
 /**
  * Checks and (if allowed) increments a user's daily chatbot message count.
@@ -64,7 +60,7 @@ enough unless the student explicitly asks for more detail.
 
 Lecture transcript:
 """
-${trimText(transcriptText, MAX_TRANSCRIPT_CHARS)}
+${trimTranscript(transcriptText, MAX_TRANSCRIPT_CHARS)}
 """
 `;
 
@@ -87,7 +83,6 @@ export const askChatbot = asyncHandler(async (req, res) => {
   // Students must be enrolled (or it must be a free course/lecture) to use
   // the doubt chatbot for a given lecture — mirrors quiz access rules.
   if (!course.isFree && !lecture.isFree) {
-    const { Enrollment } = await import("../enrollment/enrollment.model.js");
     const enrollment = await Enrollment.findOne({
       user: req.user._id,
       course: course._id,

@@ -12,7 +12,7 @@ const paymentSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Course",
       required: function () {
-        return !this.bundle; // NEW — not required for bundle purchases
+        return !this.bundle; // not required for bundle purchases
       },
     },
 
@@ -63,7 +63,7 @@ const paymentSchema = new Schema(
       default: false,
     },
 
-    // NEW — Phase 4: coupon tracking (optional, backward compatible)
+    // Coupon tracking (optional, backward compatible)
     couponCode: {
       type: String,
       default: null,
@@ -73,7 +73,7 @@ const paymentSchema = new Schema(
       default: null,
     },
 
-    // NEW — Phase 4: bundle purchases share one bundleOrderId across
+    // Bundle purchases share one bundleOrderId across
     // multiple per-course Payment docs, so refunds/lookups can group them
     bundle: {
       type: Schema.Types.ObjectId,

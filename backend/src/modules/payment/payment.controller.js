@@ -9,11 +9,9 @@ import { Bundle } from "../bundle/bundle.model.js";
 import { Enrollment } from "../enrollment/enrollment.model.js";
 import { User } from "../user/user.model.js";
 import { Coupon } from "../coupon/coupon.model.js";
-import {
-  sendEnrollmentEmail,
-  sendInstructorEnrollmentEmail,
-  sendRefundEmail,
-} from "../../utils/email.js";
+import { sendRefundEmail } from "../../utils/email.js";
+import { createEnrollment } from "../../services/enrollment.service.js";
+import logger from "../../utils/logger.js";
 
 // ─── Razorpay lazy instance ────────────────────────────────────────────────────
 // Initialized on first use (not at import time) so that dotenv has already
@@ -33,62 +31,8 @@ const getRazorpay = () => {
   return _razorpay;
 };
 
-// ─── Test-only helper: reset the Razorpay singleton (called in afterEach by test/setup.js) ──
-// This export is a no-op in production (the function is never called in prod code).
-export const _resetRazorpayForTest = () => { _razorpay = null; };
 
 
-// ─── Helper: enroll student after successful payment ───────────────────────────
-
-const enrollStudent = async (userId, courseId, courseName, userEmail, userName, instructorId) => {
-  const existing = await Enrollment.findOne({ user: userId, course: courseId });
-  if (existing) {
-    if (!existing.isActive) {
-      existing.isActive = true;
-      await existing.save();
-    }
-    return existing;
-  }
-
-  const enrollment = await Enrollment.create({
-    user: userId,
-    course: courseId,
-    isActive: true,
-    progress: 0,
-  });
-
-  await Course.findByIdAndUpdate(courseId, { $inc: { totalEnrollments: 1 } });
-
-  await User.findByIdAndUpdate(userId, {
-    $addToSet: { enrolledCourses: { course: courseId, enrolledAt: new Date() } },
-  });
-
-  // Student confirmation email
-  try {
-    await sendEnrollmentEmail(userEmail, { studentName: userName, courseName });
-  } catch (err) {
-    console.error("Enrollment email failed:", err.message);
-  }
-
-  // Instructor notification email
-  if (instructorId) {
-    try {
-      const instructor = await User.findById(instructorId).select("fullName email");
-      if (instructor) {
-        await sendInstructorEnrollmentEmail(instructor.email, {
-          instructorName: instructor.fullName,
-          studentName:    userName,
-          courseName,
-          enrolledAt:     new Date(),
-        });
-      }
-    } catch (err) {
-      console.error("Instructor notification email failed:", err.message);
-    }
-  }
-
-  return enrollment;
-};
 
 // ─── POST /api/v1/payments/create-order/:courseId ──────────────────────────────
 
@@ -209,14 +153,17 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 
   const course = await Course.findById(payment.course).populate("instructor", "fullName email");
   if (course && !payment.enrollmentCreated) {
-    await enrollStudent(
-      payment.user,
-      payment.course,
-      course.title,
-      req.user.email,
-      req.user.fullName,
-      course.instructor?._id
-    );
+    await createEnrollment({
+      userId:       payment.user,
+      courseId:     payment.course,
+      courseName:   course.title,
+      userEmail:    req.user.email,
+      userName:     req.user.fullName,
+      instructorId: course.instructor?._id,
+      instructorContact: course.instructor
+        ? { email: course.instructor.email, fullName: course.instructor.fullName }
+        : undefined,
+    });
     payment.enrollmentCreated = true;
     await payment.save();
   }
@@ -267,7 +214,7 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error("RAZORPAY_WEBHOOK_SECRET not set");
+    logger.error("RAZORPAY_WEBHOOK_SECRET not set");
     return res.status(500).json({ error: "Webhook secret not configured" });
   }
 
@@ -299,14 +246,17 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
         const course = await Course.findById(payment.course).populate("instructor", "fullName email");
         const user   = await User.findById(payment.user).select("fullName email");
         if (course && user) {
-          await enrollStudent(
-            payment.user,
-            payment.course,
-            course.title,
-            user.email,
-            user.fullName,
-            course.instructor?._id
-          );
+          await createEnrollment({
+            userId:       payment.user,
+            courseId:     payment.course,
+            courseName:   course.title,
+            userEmail:    user.email,
+            userName:     user.fullName,
+            instructorId: course.instructor?._id,
+            instructorContact: course.instructor
+              ? { email: course.instructor.email, fullName: course.instructor.fullName }
+              : undefined,
+          });
           payment.enrollmentCreated = true;
           await payment.save();
         }
@@ -377,7 +327,7 @@ export const refundPayment = asyncHandler(async (req, res) => {
       studentName: payment.user.fullName || "Student",
       courseName:  payment.course.title || "Course",
       amount:      payment.amount,
-    }).catch((err) => console.error("Refund notification email failed:", err.message));
+    }).catch((err) => logger.error("Refund notification email failed:", err.message));
   }
 
   return res.status(200).json(
@@ -498,14 +448,17 @@ export const verifyBundlePayment = asyncHandler(async (req, res) => {
 
         for (const course of unownedCourses) {
           // 1. Enroll the student
-          await enrollStudent(
-            payment.user,
-            course._id,
-            course.title,
-            req.user.email,
-            req.user.fullName,
-            course.instructor?._id
-          );
+          await createEnrollment({
+            userId:       payment.user,
+            courseId:     course._id,
+            courseName:   course.title,
+            userEmail:    req.user.email,
+            userName:     req.user.fullName,
+            instructorId: course.instructor?._id,
+            instructorContact: course.instructor
+              ? { email: course.instructor.email, fullName: course.instructor.fullName }
+              : undefined,
+          });
 
           // 2. Create a completed Payment record for this specific course to credit instructor revenue stats
           await Payment.create({

@@ -45,7 +45,7 @@ const transcriptSchema = new Schema(
       default: "processing",
     },
 
-    // NEW — Phase 2: AI-generated key-takeaway bullets, derived from
+    // AI-generated key-takeaway bullets, derived from
     // transcriptText. Generated once (instructor-triggered) and cached
     // here rather than regenerated per student view.
     summary: {

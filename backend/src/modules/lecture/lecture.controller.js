@@ -4,26 +4,15 @@ import ApiResponse from "../../utils/ApiResponse.js";
 import { Lecture } from "./lecture.model.js";
 import { Course } from "../course/course.model.js";
 import { Enrollment } from "../enrollment/enrollment.model.js";
-import { Transcript } from "../transcript/transcript.model.js"; // NEW — Phase 2: summary status lookup
+import { Transcript } from "../transcript/transcript.model.js";
 import { uploadVideoOnCloudinary, deleteFromCloudinary } from "../../utils/cloudinary.js";
-
-// ─── Shared helper ─────────────────────────────────────────────────────────────
-
-const getOwnedLecture = async (lectureId, instructorId) => {
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
-  if (lecture.course.instructor.toString() !== instructorId.toString()) {
-    throw new ApiError(403, "Not authorized to modify this lecture");
-  }
-  return lecture;
-};
+import { getOwnedLecture } from "./lecture.service.js";
 
 // ─── Controllers ───────────────────────────────────────────────────────────────
 
 export const addLecture = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  const { title, description, order, isFree, releaseDate } = req.body; // releaseDate NEW — Phase 4
+  const { title, description, order, isFree, releaseDate } = req.body;
 
   if (!title || order === undefined) throw new ApiError(400, "Title and order are required");
   if (!req.file) throw new ApiError(400, "Video file is required");
@@ -52,7 +41,7 @@ export const addLecture = asyncHandler(async (req, res) => {
     },
     order: Number(order),
     isFree: isFree === "true" || isFree === true,
-    releaseDate: releaseDate || null, // NEW — Phase 4
+    releaseDate: releaseDate || null,
     isPublished: true,
     processingStatus: "pending",
   });
@@ -153,9 +142,8 @@ export const getCourseLectures = asyncHandler(async (req, res) => {
     .select("-__v")
     .sort({ order: 1 });
 
-  // NEW — Phase 2: attach each lecture's summary status in one batched
-  // query, so ManageCoursePage can show a "Summary" done/pending indicator
-  // without an extra round-trip per lecture.
+  // Attach each lecture's summary status in one batched
+  // query, so ManageCoursePage can show a "Summary" done/pending indicator.
   const transcripts = await Transcript.find({ lecture: { $in: lectures.map((l) => l._id) } })
     .select("lecture summaryStatus");
   const summaryStatusByLecture = new Map(
@@ -166,15 +154,14 @@ export const getCourseLectures = asyncHandler(async (req, res) => {
     const lec = lecture.toObject();
     delete lec.video?.publicId;
 
-    lec.summaryStatus = summaryStatusByLecture.get(lecture._id.toString()) || "none"; // NEW
+    lec.summaryStatus = summaryStatusByLecture.get(lecture._id.toString()) || "none";
 
     // Full access: instructor, free course, or enrolled student
     let hasFullAccess = isInstructor || course.isFree || isEnrolled || lec.isFree;
 
-    // NEW — Phase 4: drip content — lock lectures with a future
-    // releaseDate for everyone except the instructor.
+    // Drip content — lock lectures with a future releaseDate for everyone except the instructor.
     const isDripLocked = !isInstructor && lec.releaseDate && new Date(lec.releaseDate) > new Date();
-    lec.isDripLocked = !!isDripLocked; // NEW — exposed so the frontend can show "Available on <date>"
+    lec.isDripLocked = !!isDripLocked; // exposed so the frontend can show "Available on <date>"
     if (isDripLocked) hasFullAccess = false;
 
     if (!hasFullAccess) {

@@ -5,7 +5,9 @@ import { Quiz } from "./quiz.model.js";
 import { Course } from "../course/course.model.js";
 import { Transcript } from "../transcript/transcript.model.js";
 import { Lecture } from "../lecture/lecture.model.js";
-import Groq from "groq-sdk";
+import { Enrollment } from "../enrollment/enrollment.model.js";
+import { getGroqClient, trimTranscript } from "../../utils/groq.js";
+import { getOwnedLecture } from "../lecture/lecture.service.js";
 
 const TOTAL_QUESTIONS  = 20;
 const EASY_COUNT       = 5;
@@ -13,12 +15,7 @@ const MEDIUM_COUNT     = 10;
 const HARD_COUNT       = 5;
 const DAILY_AI_LIMIT   = 5; // per course, per day
 
-// ─── Groq helpers ──────────────────────────────────────────────────────────────
 
-const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-const trimTranscript = (text, maxChars = 6000) =>
-  text.length <= maxChars ? text : text.slice(0, maxChars) + "...";
 
 // The prompt explicitly handles transcripts in ANY language (Hindi, Tamil, etc.)
 // by instructing the model to first understand the content, then ALWAYS
@@ -105,28 +102,19 @@ const validateQuestionSet = (questions) => {
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
+// getOwnedLecture is imported from lecture.service.js
+
+/**
+ * Finds a lecture + its completed transcript in one call, verifying
+ * instructor ownership. Used by quiz generation endpoints.
+ */
 const getOwnedLectureWithTranscript = async (lectureId, instructorId) => {
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
-  if (lecture.course.instructor.toString() !== instructorId.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
+  const lecture = await getOwnedLecture(lectureId, instructorId);
 
   const transcript = await Transcript.findOne({ lecture: lectureId, status: "completed" });
   if (!transcript) throw new ApiError(404, "Completed transcript not found. Generate a transcript first.");
 
   return { lecture, transcript };
-};
-
-const getOwnedLecture = async (lectureId, instructorId) => {
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
-  if (lecture.course.instructor.toString() !== instructorId.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
-  return lecture;
 };
 
 /**
@@ -413,7 +401,6 @@ export const getQuizByLecture = asyncHandler(async (req, res) => {
   if (!isInstructor && !course.isFree) {
     if (!req.user) throw new ApiError(401, "Login required");
 
-    const { Enrollment } = await import("../enrollment/enrollment.model.js");
     const enrollment = await Enrollment.findOne({
       user: req.user._id,
       course: course._id,

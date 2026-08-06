@@ -3,15 +3,7 @@ import ApiError from "../../utils/ApiError.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 import { Coupon } from "./coupon.model.js";
 import { Course } from "../course/course.model.js";
-
-const assertOwnsCourse = async (courseId, instructorId) => {
-  const course = await Course.findById(courseId);
-  if (!course) throw new ApiError(404, "Course not found");
-  if (course.instructor.toString() !== instructorId.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
-  return course;
-};
+import { getOwnedCourse } from "../course/course.service.js";
 
 export const createCoupon = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
@@ -21,7 +13,7 @@ export const createCoupon = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Code and discount percent are required");
   }
 
-  await assertOwnsCourse(courseId, req.user._id);
+  await getOwnedCourse(courseId, req.user._id);
 
   const existing = await Coupon.findOne({ course: courseId, code: code.toUpperCase().trim() });
   if (existing) throw new ApiError(400, "A coupon with this code already exists for this course");
@@ -40,7 +32,7 @@ export const createCoupon = asyncHandler(async (req, res) => {
 
 export const getCourseCoupons = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  await assertOwnsCourse(courseId, req.user._id);
+  await getOwnedCourse(courseId, req.user._id);
 
   const coupons = await Coupon.find({ course: courseId }).sort({ createdAt: -1 });
   return res.status(200).json(new ApiResponse(200, { coupons }));

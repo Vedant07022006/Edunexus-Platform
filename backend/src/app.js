@@ -92,13 +92,13 @@ app.use("/api/v1/quizzes",      quizRouter);
 app.use("/api/v1/enrollments",  enrollmentRouter);
 app.use("/api/v1/payments",     paymentRouter);
 app.use("/api/v1/quiz-attempts", quizAttemptRouter);
-app.use("/api/v1/revenue",      revenueRouter);  // NEW
-app.use("/api/v1/chatbot",      chatbotRouter);  // NEW
-app.use("/api/v1/reviews",      reviewRouter);   // NEW — Phase 1
-app.use("/api/v1/discussions",  discussionRouter); // NEW — Phase 3
-app.use("/api/v1/coupons",      couponRouter);      // NEW — Phase 4
-app.use("/api/v1/bundles",      bundleRouter);       // NEW — Phase 4
-app.use("/api/v1/reports",      reportRouter);       // NEW — Phase 5
+app.use("/api/v1/revenue",      revenueRouter);
+app.use("/api/v1/chatbot",      chatbotRouter);
+app.use("/api/v1/reviews",      reviewRouter);
+app.use("/api/v1/discussions",  discussionRouter);
+app.use("/api/v1/coupons",      couponRouter);
+app.use("/api/v1/bundles",      bundleRouter);
+app.use("/api/v1/reports",      reportRouter);
 
 app.use(errorHandler);
 

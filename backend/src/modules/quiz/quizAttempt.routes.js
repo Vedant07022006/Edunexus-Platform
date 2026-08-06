@@ -46,7 +46,7 @@ router.get(
   isStudent,
   getAttemptDetails
 );
-// NEW — Phase 2
+
 router.post(
   "/weak-spots/:attemptId",
   verifyJWT,

@@ -39,7 +39,7 @@ router.get(
   getPaymentHistory
 );
 
-// NEW — Phase 4: bundle checkout
+// Bundle checkout
 router.post("/bundle/create-order/:bundleId", verifyJWT, isStudent, createBundleOrder);
 router.post("/bundle/verify", verifyJWT, isStudent, verifyBundlePayment);
 
@@ -53,7 +53,7 @@ router.get(
   getCoursePayments
 );
 
-// NEW — Phase 5: refund
+// Refund
 router.post("/refund/:paymentId", verifyJWT, isInstructor, refundPayment);
 
 export default router;

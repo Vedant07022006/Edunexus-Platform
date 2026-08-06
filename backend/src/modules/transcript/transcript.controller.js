@@ -3,36 +3,31 @@ import ApiError from "../../utils/ApiError.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 import { Transcript } from "./transcript.model.js";
 import { Lecture } from "../lecture/lecture.model.js";
+import { Enrollment } from "../enrollment/enrollment.model.js";
 import { AssemblyAI } from "assemblyai";
-import Groq from "groq-sdk"; // NEW — Phase 2: lecture summaries
+import { getGroqClient, trimTranscript, parseAiJsonResponse } from "../../utils/groq.js";
+import { getOwnedLecture } from "../lecture/lecture.service.js";
 
-// ─── Shared helpers ────────────────────────────────────────────────────────────
+// ─── Ownership helper ───────────────────────────────────────────────────────────
+// Re-exported from lecture.service — kept here as a named const for clarity
+// (transcript operations require owning the lecture's parent course).
 
 const getAssemblyAIClient = () => new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY });
-const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY }); // NEW
 
-// NEW — Phase 2: same trimming approach used for quiz generation, keeps
-// the prompt size (and cost) predictable regardless of lecture length.
-const trimTranscript = (text, maxChars = 6000) =>
-  text.length <= maxChars ? text : text.slice(0, maxChars) + "...";
-
-// NEW — strips markdown code fences some models wrap JSON responses in,
-// then parses. Mirrors the defensive parsing style used in quiz.controller.js.
+// Strips markdown code fences some models wrap JSON responses in, then parses.
 const parseSummaryResponse = (raw) => {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
-  let parsed;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new ApiError(500, "AI returned invalid summary content. Please try again.");
-  }
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new ApiError(500, "AI did not return a valid list of takeaways. Please try again.");
-  }
-  return parsed
+  return parseAiJsonResponse(
+    raw,
+    (parsed) => {
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new ApiError(500, "AI did not return a valid list of takeaways. Please try again.");
+      }
+    },
+    "AI returned invalid summary content. Please try again."
+  )
     .map((point) => (typeof point === "string" ? point.trim() : ""))
     .filter(Boolean)
-    .slice(0, 6); // hard cap even if the model over-generates
+    .slice(0, 6);
 };
 
 const buildSummaryPrompt = (transcriptText) => `
@@ -78,15 +73,7 @@ const generateSummaryWithAi = async (transcriptText) => {
  * Fetches a lecture with its course, verifies the requesting user owns it.
  * Throws on any failure.
  */
-const getOwnedLecture = async (lectureId, instructorId) => {
-  const lecture = await Lecture.findById(lectureId).populate("course");
-  if (!lecture) throw new ApiError(404, "Lecture not found");
-  if (!lecture.course?.instructor) throw new ApiError(404, "This course is no longer available");
-  if (lecture.course.instructor.toString() !== instructorId.toString()) {
-    throw new ApiError(403, "Not authorized");
-  }
-  return lecture;
-};
+
 
 // ─── Controllers ───────────────────────────────────────────────────────────────
 
@@ -162,8 +149,7 @@ export const generateTranscript = asyncHandler(async (req, res) => {
 });
 
 
-// NEW — Phase 2: generate-once lecture summary, instructor-triggered,
-// same pattern as quiz generation (generate → store → serve statically).
+// Generate-once lecture summary, instructor-triggered (generate → store → serve statically).
 export const generateSummary = asyncHandler(async (req, res) => {
   const { lectureId } = req.params;
 
@@ -228,7 +214,6 @@ export const getTranscriptForViewer = asyncHandler(async (req, res) => {
   const isInstructor = course.instructor.toString() === req.user._id.toString();
 
   if (!isInstructor && !course.isFree && !lecture.isFree) {
-    const { Enrollment } = await import("../enrollment/enrollment.model.js");
     const enrollment = await Enrollment.findOne({
       user: req.user._id,
       course: course._id,

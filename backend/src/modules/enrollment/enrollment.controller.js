@@ -5,42 +5,12 @@ import { Enrollment } from "./enrollment.model.js";
 import { Course } from "../course/course.model.js";
 import { User } from "../user/user.model.js";
 import { Lecture } from "../lecture/lecture.model.js";
-import { sendEnrollmentEmail, sendInstructorEnrollmentEmail } from "../../utils/email.js";
 import { Payment } from "../payment/payment.model.js";
+import { createEnrollment } from "../../services/enrollment.service.js";
+import logger from "../../utils/logger.js";
 
 
-const autoEnrollFreeCourse = async (userId, courseId, courseName, userEmail, userName) => {
-  const existing = await Enrollment.findOne({ user: userId, course: courseId });
 
-  if (existing) {
-    if (!existing.isActive) {
-      existing.isActive = true;
-      await existing.save();
-    }
-    return existing;
-  }
-
-  const enrollment = await Enrollment.create({
-    user: userId,
-    course: courseId,
-    isActive: true,
-    progress: 0,
-  });
-
-  await Course.findByIdAndUpdate(courseId, { $inc: { totalEnrollments: 1 } });
-
-  await User.findByIdAndUpdate(userId, {
-    $addToSet: { enrolledCourses: { course: courseId, enrolledAt: new Date() } },
-  });
-
-  try {
-    await sendEnrollmentEmail(userEmail, { studentName: userName, courseName });
-  } catch (err) {
-    console.error("Enrollment email failed:", err.message);
-  }
-
-  return enrollment;
-};
 
 
 export const enrollFreeCourse = asyncHandler(async (req, res) => {
@@ -63,26 +33,17 @@ export const enrollFreeCourse = asyncHandler(async (req, res) => {
   });
   if (existingEnrollment) throw new ApiError(400, "You are already enrolled in this course");
 
-  const enrollment = await autoEnrollFreeCourse(
-    req.user._id,
+  const enrollment = await createEnrollment({
+    userId:     req.user._id,
     courseId,
-    course.title,
-    req.user.email,
-    req.user.fullName
-  );
+    courseName: course.title,
+    userEmail:  req.user.email,
+    userName:   req.user.fullName,
+    instructorId:      course.instructor._id,
+    instructorContact: { email: course.instructor.email, fullName: course.instructor.fullName },
+  });
 
-  // Notify instructor
-  try {
-    await sendInstructorEnrollmentEmail(course.instructor.email, {
-      instructorName: course.instructor.fullName,
-      studentName:    req.user.fullName,
-      courseName:     course.title,
-      amount:         0,
-      enrolledAt:     new Date(),
-    });
-  } catch (err) {
-    console.error("Instructor notification email failed:", err.message);
-  }
+  // Instructor notification is handled inside createEnrollment
 
   return res.status(201).json(new ApiResponse(201, enrollment, "Enrolled successfully"));
 });
@@ -246,17 +207,12 @@ export const updateProgress = asyncHandler(async (req, res) => {
 });
 
 
-// NEW: lightweight playback-position heartbeat. Deliberately separate from
-// updateProgress — this is called every few seconds while a video plays, so
-// it must NEVER touch completedLectures/progress (that would prematurely
-// mark a lecture "completed" a few seconds into playback and break quiz
-// eligibility gating). It only records where to resume from.
-// NEW — Phase 3: updates the user's daily learning streak. Only writes
-// when the calendar day actually changed, so this stays cheap even
-// though it's called from a frequently-hit endpoint.
+// Lightweight playback-position heartbeat. Deliberately separate from
+// updateProgress — called every few seconds while a video plays, so
+// it must NEVER touch completedLectures/progress. It only records where
+// to resume from.
 const updateLearningStreak = async (userId) => {
-  const { User: UserModel } = await import("../user/user.model.js");
-  const user = await UserModel.findById(userId).select("currentStreak longestStreak lastActiveDate");
+  const user = await User.findById(userId).select("currentStreak longestStreak lastActiveDate");
   if (!user) return;
 
   const today = new Date();
@@ -307,8 +263,7 @@ export const updateLastWatchedPosition = asyncHandler(async (req, res) => {
   enrollment.lastWatchedSeconds = Math.floor(parsedSeconds);
   await enrollment.save();
 
-  // NEW — Phase 3: bump the user's daily learning streak. Cheap
-  // date-only comparison, only writes when the day has actually changed.
+  // Bump the user's daily learning streak (date-only comparison, cheap).
   await updateLearningStreak(req.user._id);
 
   return res.status(200).json(new ApiResponse(200, null, "Position saved"));

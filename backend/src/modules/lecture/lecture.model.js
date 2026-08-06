@@ -41,7 +41,7 @@ const lectureSchema = new Schema(
       default: false, 
     },
 
-    // NEW — Phase 4: drip content. If set to a future date, the lecture
+    // Drip content. If set to a future date, the lecture
     // is locked for students (not instructors) until that date.
     releaseDate: {
       type: Date,

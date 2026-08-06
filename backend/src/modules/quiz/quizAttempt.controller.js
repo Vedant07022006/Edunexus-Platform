@@ -6,27 +6,23 @@ import { Quiz } from "./quiz.model.js";
 import { Enrollment } from "../enrollment/enrollment.model.js";
 import { Lecture } from "../lecture/lecture.model.js";
 import mongoose from "mongoose";
-import Groq from "groq-sdk"; // NEW — Phase 2: weak-spot review
+import { getGroqClient, parseAiJsonResponse } from "../../utils/groq.js";
 
 const MAX_ATTEMPTS   = 3;
 const COOLDOWN_HOURS = 24;
 
-// ─── Weak-spot review helpers (NEW — Phase 2) ──────────────────────────────────
-
-const getGroqClient = () => new Groq({ apiKey: process.env.GROQ_API_KEY });
+// ─── Weak-spot review helpers ──────────────────────────────────────────────────
 
 const parseWeakSpotResponse = (raw) => {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
-  let parsed;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new ApiError(500, "AI returned invalid feedback content. Please try again.");
-  }
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new ApiError(500, "AI did not return valid feedback. Please try again.");
-  }
-  return parsed
+  return parseAiJsonResponse(
+    raw,
+    (parsed) => {
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new ApiError(500, "AI did not return valid feedback. Please try again.");
+      }
+    },
+    "AI returned invalid feedback content. Please try again."
+  )
     .map((point) => (typeof point === "string" ? point.trim() : ""))
     .filter(Boolean)
     .slice(0, 5);
@@ -469,7 +465,7 @@ export const getAttemptDetails = asyncHandler(async (req, res) => {
 });
 
 
-// NEW — Phase 2: on-demand, student-triggered personalized weak-spot
+// On-demand, student-triggered personalized weak-spot
 // feedback. Generated once per attempt and cached on the QuizAttempt doc.
 export const generateWeakSpotReview = asyncHandler(async (req, res) => {
   if (!req.user) throw new ApiError(401, "Login required");

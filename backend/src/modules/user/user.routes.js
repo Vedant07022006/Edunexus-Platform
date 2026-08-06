@@ -30,7 +30,7 @@ router.post("/register", registerUser);
 router.post("/verify-email-otp", verifyEmailOtp);
 router.post("/resend-otp", otpLimiter, resendOtp);
 router.post("/login", loginLimiter, loginUser);
-router.post("/login/verify-otp", loginLimiter, verifyLoginOtp); // NEW — Phase 5
+router.post("/login/verify-otp", loginLimiter, verifyLoginOtp);
 router.post("/forgot-password", otpLimiter, forgotPassword);
 router.get("/reset-password-page/:token", serveResetPasswordPage);
 router.post("/reset-password/:token", resetPassword);
@@ -43,7 +43,7 @@ router.post("/logout", verifyJWT, logoutUser);
 router.get("/me", verifyJWT, getMyProfile);
 router.patch("/update-profile", verifyJWT, updateProfile);
 router.patch("/change-password", verifyJWT, changeCurrentPassword);
-router.patch("/toggle-2fa", verifyJWT, toggleTwoFactor); // NEW — Phase 5
+router.patch("/toggle-2fa", verifyJWT, toggleTwoFactor);
 router.delete("/delete-account", verifyJWT, deleteMyAccount);
 
 

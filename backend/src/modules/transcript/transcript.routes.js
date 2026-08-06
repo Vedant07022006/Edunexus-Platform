@@ -19,7 +19,7 @@ router.post(
   generateTranscript
 );
 
-// NEW — Phase 2: instructor-triggered summary generation
+// Instructor-triggered summary generation
 router.post(
   "/generate-summary/:lectureId",
   verifyJWT,

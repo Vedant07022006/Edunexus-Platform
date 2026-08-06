@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { User } from "./user.model.js";
 import { Course } from "../course/course.model.js";
 import { PendingUser } from "./pendingUser.model.js";
+import { Enrollment } from "../enrollment/enrollment.model.js";
 import ApiError from "../../utils/ApiError.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 import asyncHandler from "../../utils/asyncHandler.js";
@@ -122,6 +123,10 @@ export const verifyEmailOtp = asyncHandler(async (req, res) => {
     throw new ApiError(400, "OTP has expired. Please register again.");
   }
 
+  if (pending.otpAttempts >= 5) {
+    throw new ApiError(429, "Too many failed OTP attempts. Please register again.");
+  }
+
   const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
 
   if (pending.hashedOtp !== hashedOtp) {
@@ -214,7 +219,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) throw new ApiError(401, "Invalid credentials");
 
-  // NEW — Phase 5: 2FA branch. Only triggers for users who opted in;
+  // 2FA branch. Only triggers for users who opted in;
   // everyone else falls through to the original login flow unchanged.
   if (user.twoFactorEnabled) {
     const otp = generateOtp();
@@ -253,7 +258,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 
-// NEW — Phase 5: completes a 2FA login after loginUser sent an OTP
+// Completes a 2FA login after loginUser sent an OTP
 export const verifyLoginOtp = asyncHandler(async (req, res) => {
   let { email, otp } = req.body || {};
   if (!email || !otp) throw new ApiError(400, "Email and OTP are required");
@@ -286,7 +291,7 @@ export const verifyLoginOtp = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { user: loggedInUser, accessToken }, "Login successful"));
 });
 
-// NEW — Phase 5: toggle 2FA from the profile page (already-authenticated request)
+// Toggle 2FA from the profile page (already-authenticated request)
 export const toggleTwoFactor = asyncHandler(async (req, res) => {
   const { enabled } = req.body;
   const user = await User.findByIdAndUpdate(
@@ -759,7 +764,12 @@ export const deleteMyAccount = asyncHandler(async (req, res) => {
     );
   }
 
-  // Deactivate account, clear tokens
+  // Deactivate enrollments, deactivate account, clear tokens
+  await Enrollment.updateMany(
+    { user: user._id, isActive: true },
+    { $set: { isActive: false } }
+  );
+
   user.isActive = false;
   user.refreshToken = undefined;
   await user.save({ validateBeforeSave: false });

@@ -121,7 +121,7 @@ const userSchema = new Schema(
       default: null,
     },
 
-    // NEW — Phase 3: daily learning streak
+    // Daily learning streak
     currentStreak: {
       type: Number,
       default: 0,
@@ -135,7 +135,7 @@ const userSchema = new Schema(
       default: null,
     },
 
-    // NEW — Phase 5: optional 2FA on login, opt-in and off by default
+    // Optional 2FA on login, opt-in and off by default
     twoFactorEnabled: {
       type: Boolean,
       default: false,

@@ -100,7 +100,7 @@ const quizAttemptSchema = new Schema(
       default: [],
     },
 
-    // NEW — Phase 2: on-demand, student-triggered personalized feedback
+    // On-demand, student-triggered personalized feedback
     // based on which questions they got wrong. Generated once and cached.
     weakSpotReview: {
       type: [String],
