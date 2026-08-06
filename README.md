@@ -128,8 +128,6 @@ Every incoming HTTP request traverses the Express middleware chain in strict ord
 
 #### 1. Authentication & User Lifecycle Flow
 
-![Authentication & User Lifecycle Flow](docs/assets/auth-flow.svg)
-
 ```mermaid
 sequenceDiagram
     autonumber
@@ -156,8 +154,6 @@ sequenceDiagram
 ```
 
 #### 2. Course Creation, Video Upload & AI Processing Pipeline
-
-![Course Creation & AI Processing Pipeline](docs/assets/video-pipeline.svg)
 
 ```mermaid
 flowchart TD
