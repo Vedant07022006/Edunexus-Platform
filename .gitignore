@@ -8,6 +8,9 @@ package-lock.json
 # Zip files
 *.zip
 
+# Scripts / Tooling
+cleanup.ps1
+
 # Documents / notes
 Readme.md
 changes_updation.md

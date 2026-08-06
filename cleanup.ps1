@@ -20,6 +20,13 @@ $backendPaths = @(
     "backend/src/routes"
 )
 
+# Root paths to remove
+$rootPaths = @(
+    "node_modules",
+    "package.json",
+    "package-lock.json"
+)
+
 # Remove Frontend legacy directories
 foreach ($path in $frontendPaths) {
     $fullPath = Join-Path $root $path
@@ -36,6 +43,17 @@ foreach ($path in $backendPaths) {
     $fullPath = Join-Path $root $path
     if (Test-Path $fullPath) {
         Write-Host "Removing: $path" -ForegroundColor Yellow
+        Remove-Item -Recurse -Force $fullPath
+    } else {
+        Write-Host "Already removed or not found: $path" -ForegroundColor DarkGray
+    }
+}
+
+# Remove Root legacy files/directories
+foreach ($path in $rootPaths) {
+    $fullPath = Join-Path $root $path
+    if (Test-Path $fullPath) {
+        Write-Host "Removing root item: $path" -ForegroundColor Yellow
         Remove-Item -Recurse -Force $fullPath
     } else {
         Write-Host "Already removed or not found: $path" -ForegroundColor DarkGray
